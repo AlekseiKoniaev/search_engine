@@ -1,24 +1,13 @@
-import org.jsoup.nodes.Document;
-
-import java.util.HashSet;
-import java.util.Set;
+package model;
 
 public class Page implements Comparable<Page> {
     
     private String path;
     private int code;
-    private Document content;
-    private Set<Page> children;
+    private String content;
     
     public Page(String path) {
         this.path = path;
-        children = new HashSet<>();
-    }
-    
-    public Page(String path, int code, Document content) {
-        this.path = path;
-        this.code = code;
-        this.content = content;
     }
     
     public String getPath() {
@@ -37,24 +26,12 @@ public class Page implements Comparable<Page> {
         this.code = code;
     }
     
-    public Document getContent() {
+    public String getContent() {
         return content;
     }
     
-    public void setContent(Document content) {
+    public void setContent(String content) {
         this.content = content;
-    }
-    
-    public Set<Page> getChildren() {
-        return children;
-    }
-    
-    public void addChild(Page site) {
-        children.add(site);
-    }
-    
-    public void addChildren(Set<Page> children) {
-        this.children.addAll(children);
     }
     
     @Override
