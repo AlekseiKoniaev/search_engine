@@ -1,5 +1,6 @@
 package parser;
 
+import model.Page;
 import org.jsoup.nodes.Document;
 
 import java.util.Set;
@@ -10,9 +11,9 @@ public class PageParser {
     private final String rootPath;
     private final Document document;
     
-    public PageParser(String rootPath, Document document) {
+    public PageParser(String rootPath, Page page) {
         this.rootPath = rootPath;
-        this.document = document;
+        this.document = page.getDocument();
     }
     
     public Set<String> parseLink() {

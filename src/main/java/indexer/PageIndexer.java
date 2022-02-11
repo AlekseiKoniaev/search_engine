@@ -1,6 +1,8 @@
 package indexer;
 
 import lemmatizer.Lemmatizer;
+import model.Index;
+import model.Page;
 import org.jsoup.nodes.Document;
 import repository.DBConnection;
 
@@ -26,9 +28,9 @@ public class PageIndexer {
     private Set<Index> indexes;
     
     
-    public PageIndexer(String path, Document document) {
-        this.path = path;
-        this.document = document;
+    public PageIndexer(Page page) {
+        this.path = page.getPath();
+        this.document = page.getDocument();
         indexes = new HashSet<>();
     }
     
@@ -47,11 +49,7 @@ public class PageIndexer {
     
     private Map<String, Integer> getLemmasForField(String selector) {
         String text = extractFragment(selector);
-        if (text.isEmpty()) {
-            return new HashMap<>();
-        }
-        Lemmatizer lemmatizer = new Lemmatizer(text);
-        return lemmatizer.countLemmas();
+        return new Lemmatizer(text).getLemmas();
     }
 
     private String extractFragment(String selector) {

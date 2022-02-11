@@ -1,10 +1,14 @@
 package model;
 
+import org.jsoup.nodes.Document;
+
+import java.util.Objects;
+
 public class Page implements Comparable<Page> {
     
-    private String path;
+    private final String path;
     private int code;
-    private String content;
+    private Document document;
     
     public Page(String path) {
         this.path = path;
@@ -12,10 +16,6 @@ public class Page implements Comparable<Page> {
     
     public String getPath() {
         return path;
-    }
-    
-    private void setPath(String path) {
-        this.path = path;
     }
     
     public int getCode() {
@@ -26,12 +26,16 @@ public class Page implements Comparable<Page> {
         this.code = code;
     }
     
-    public String getContent() {
-        return content;
+    public Document getDocument() {
+        return document;
     }
     
-    public void setContent(String content) {
-        this.content = content;
+    public void setDocument(Document document) {
+        this.document = document;
+    }
+    
+    public String getContent() {
+        return Objects.requireNonNullElse(document, "").toString();
     }
     
     @Override

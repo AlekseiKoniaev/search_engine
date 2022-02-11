@@ -1,4 +1,4 @@
-package lemmatizer;
+package model;
 
 public class Lemma {
     

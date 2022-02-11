@@ -1,6 +1,7 @@
 package repository;
 
-import indexer.Index;
+import model.Index;
+import model.Page;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -85,12 +86,12 @@ public class DBConnection {
     }
     
     
-    public static void insertPage(String path, int code, String content) {
-        content = content
+    public static void insertPage(Page page) {
+        String content = page.getContent()
                 .replaceAll("\\s*\\n\\s*", "")  // удаление переносов строки
                 .replaceAll("'", "\\\\'");      // экранирование символа
         String sql = "INSERT INTO _page(_path, _code, _content) " +
-                "VALUES ('" + path + "', " + code + ", '" + content + "')";
+                "VALUES ('" + page.getPath() + "', " + page.getCode() + ", '" + content + "')";
         try {
             connection.createStatement().execute(sql);
         } catch (SQLException e) {

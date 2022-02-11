@@ -1,6 +1,7 @@
 package parser;
 
 import indexer.PageIndexer;
+import model.Page;
 import org.jsoup.Connection;
 import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
@@ -26,19 +27,16 @@ public class SiteWalker extends RecursiveTask<String> {
     
     private static String rootPath;
     
-    private final String path;
-    private int code;
-    private String content;
-    private Document document;
+    private final Page page;
     
     
     public SiteWalker(String URL) {
         if (rootPath == null) {
             PageIndexer.setFields(DBConnection.getFields());
             rootPath = URL.endsWith("/") ? URL.substring(0, URL.length() - 1) : URL;
-            path = "/";
+            page = new Page("/");
         } else {
-            this.path = URL;
+            page = new Page(URL);
         }
     }
     
@@ -47,10 +45,10 @@ public class SiteWalker extends RecursiveTask<String> {
         
         if (visitPage()) {
     
-            PageIndexer indexer = new PageIndexer(path, document);
+            PageIndexer indexer = new PageIndexer(page);
             indexer.index();
             
-            PageParser parser = new PageParser(rootPath, document);
+            PageParser parser = new PageParser(rootPath, page);
             
             Set<String> parsedPages = parser.parseLink();
             parsedPages.removeIf(visitedPages::contains);
@@ -66,13 +64,14 @@ public class SiteWalker extends RecursiveTask<String> {
                 walker.join();
             }
             
-            return path;
+            return page.getPath();
         } else {
             return "";
         }
     }
     
     private boolean visitPage() {
+        String path = page.getPath();
         synchronized (visitedPages) {
             if (visitedPages.contains(path)) {
                 return false;
@@ -80,27 +79,27 @@ public class SiteWalker extends RecursiveTask<String> {
                 visitedPages.add(path);
             }
         }
-        synchronized (path) {
+        synchronized (page) {
             try {
                 Connection.Response response = Jsoup.connect(rootPath + path)
                         .userAgent(USER_AGENT)
                         .referrer(REFERRER)
                         .execute();
-                code = response.statusCode();
-                document = response.parse();
+                page.setCode(response.statusCode());
+                page.setDocument(response.parse());
             } catch (HttpStatusException e) {
-                code = e.getStatusCode();
+                page.setCode(e.getStatusCode());
             } catch (SocketTimeoutException e) {
-                code = 0;
+                page.setCode(0);
             } catch (IOException e) {
                 e.printStackTrace();
                 return false;
             }
-            content = Objects.requireNonNullElse(document, "").toString();
-            DBConnection.insertPage(path, code, content);
+            
+            DBConnection.insertPage(page);
         }
         
-        return code == 200;
+        return page.getCode() == 200;
     }
     
 }

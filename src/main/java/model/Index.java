@@ -1,4 +1,4 @@
-package indexer;
+package model;
 
 public class Index {
     
