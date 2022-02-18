@@ -1,6 +1,9 @@
+import model.Finding;
 import parser.SiteWalker;
 import repository.DBConnection;
+import searcher.Searcher;
 
+import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 
 public class Main {
@@ -9,9 +12,22 @@ public class Main {
     
     public static void main(String[] args) {
     
+        search();
+        
+    }
+    
+    private static void indexSite() {
         DBConnection.init();
         SiteWalker walker = new SiteWalker(SITE_URL);
         ForkJoinPool.commonPool().invoke(walker);
+        DBConnection.close();
+    }
+    
+    private static void search() {
+        DBConnection.connect();
+        Searcher searcher = new Searcher();
+        Set<Finding> result = searcher.search("купить новый смартфон");
+        result.forEach(System.out::println);
         DBConnection.close();
     }
 }

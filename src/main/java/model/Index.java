@@ -2,6 +2,7 @@ package model;
 
 public class Index {
     
+    private int id;
     private final int pageId;
     private final int lemmaId;
     private final float rank;

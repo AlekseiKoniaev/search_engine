@@ -6,11 +6,26 @@ import java.util.Objects;
 
 public class Page implements Comparable<Page> {
     
-    private final String path;
+    private int id;
+    private String path;
     private int code;
     private Document document;
     
+    public Page() {}
+    
     public Page(String path) {
+        this.path = path;
+    }
+    
+    public int getId() {
+        return id;
+    }
+    
+    public void setId(int id) {
+        this.id = id;
+    }
+    
+    public void setPath(String path) {
         this.path = path;
     }
     
@@ -48,14 +63,13 @@ public class Page implements Comparable<Page> {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         
-        Page site = (Page) o;
+        Page page = (Page) o;
     
-        return path.equals(site.path);
+        return Objects.equals(path, page.path);
     }
     
     @Override
     public int hashCode() {
-        return path.hashCode();
+        return path != null ? path.hashCode() : 0;
     }
-    
 }

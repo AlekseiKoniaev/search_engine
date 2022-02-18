@@ -7,6 +7,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public abstract class LangLemmatizer {
     
@@ -26,32 +28,52 @@ public abstract class LangLemmatizer {
     public Map<String, Integer> getCountLemmas() {
         Map<String, Integer> wordCount = new HashMap<>();
         
-        getWords(text).stream()
-                .filter(word -> !isExcludedPartOfSpeech(word))
-                .map(this::getNormalForm)
-                .forEach(normalWord -> {
+        getLemmas().forEach(normalWord -> {
                     int count = wordCount.getOrDefault(normalWord, 0);
                     wordCount.put(normalWord, count + 1);
                 });
         return wordCount;
     }
     
+    public Map<String, List<String>> getInitialForms() {
+        Map<String, List<String>> initialForms = new HashMap<>();
+        for (String initialWord : getWords(text)) {
+            String lemma = getNormalForm(initialWord);
+            if (initialForms.containsKey(lemma)) {
+                initialForms.get(lemma).add(initialWord);
+            } else {
+                List<String> initialWords = new ArrayList<>();
+                initialWords.add(initialWord);
+                initialForms.put(lemma, initialWords);
+            }
+        }
+        return initialForms;
+    }
+    
+    private Set<String> getLemmas() {
+        return getWords(text).stream()
+                .map(this::getNormalForm)
+                .collect(Collectors.toSet());
+    }
+    
     private List<String> getWords(String text) {
-        return splitText(clearText(text));
+        return splitText(clearText(text)).stream()
+                .filter(this::isAllowablePartOfSpeech)
+                .toList();
     }
     
     private List<String> splitText(String text) {
         return text.isEmpty() ? new ArrayList<>() : List.of(text.split(" "));
     }
     
-    private boolean isExcludedPartOfSpeech(String word) {
+    private boolean isAllowablePartOfSpeech(String word) {
         List<String> morphInfoList;
         synchronized (LangLemmatizer.class) {
             morphInfoList = getLuceneMorphology().getMorphInfo(word);
         }
         return morphInfoList.stream()
                 .map(this::getPartOfSpeech)
-                .anyMatch(currentPartOfSpeech -> Arrays.stream(getExcludedPartOfSpeech())
+                .noneMatch(currentPartOfSpeech -> Arrays.stream(getExcludedPartOfSpeech())
                         .anyMatch(currentPartOfSpeech::matches));
     }
     
@@ -64,4 +86,5 @@ public abstract class LangLemmatizer {
             return getLuceneMorphology().getNormalForms(word).get(0);
         }
     }
+    
 }
