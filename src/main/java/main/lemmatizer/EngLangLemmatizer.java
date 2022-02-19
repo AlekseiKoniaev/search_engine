@@ -1,4 +1,4 @@
-package lemmatizer;
+package main.lemmatizer;
 
 import org.apache.lucene.morphology.LuceneMorphology;
 import org.apache.lucene.morphology.english.EnglishLuceneMorphology;

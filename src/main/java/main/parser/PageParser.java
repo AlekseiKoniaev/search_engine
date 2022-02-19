@@ -1,6 +1,6 @@
-package parser;
+package main.parser;
 
-import model.Page;
+import main.model.Page;
 import org.jsoup.nodes.Document;
 
 import java.util.Set;

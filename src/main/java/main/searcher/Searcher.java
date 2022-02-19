@@ -1,12 +1,12 @@
-package searcher;
+package main.searcher;
 
-import lemmatizer.Lemmatizer;
-import model.Finding;
-import model.Index;
-import model.Lemma;
-import model.Page;
+import main.lemmatizer.Lemmatizer;
+import main.model.Finding;
+import main.model.Index;
+import main.model.Lemma;
+import main.model.Page;
 import org.jsoup.nodes.Document;
-import repository.DBConnection;
+import main.repository.DBConnection;
 
 import java.util.Comparator;
 import java.util.HashMap;
@@ -29,9 +29,7 @@ public class Searcher {
         fields = DBConnection.getFields();
         Lemmatizer lemmatizer = new Lemmatizer(query);
         Set<String> lemmasStr = lemmatizer.getLemmas().keySet();
-        lemmas = DBConnection.getLemmas(lemmasStr);
-        
-        // todo : 2. исключить леммы, которые встречаются на слишком большом количестве страниц
+        lemmas = getLemmas(lemmasStr);
         
         indexes = findIndexes();
         pages = getPages();
@@ -42,6 +40,13 @@ public class Searcher {
         return createFindings(pagesRelRelevance);
     }
     
+    
+    private Set<Lemma> getLemmas(Set<String> lemmasStr) {
+        int thresholdCountPages = (int) (DBConnection.getPageCount() * 0.5);
+        return DBConnection.getLemmas(lemmasStr).stream()
+                .filter(lemma -> lemma.getFrequency() < thresholdCountPages)
+                .collect(Collectors.toSet());
+    }
     
     private Set<Index> findIndexes() {
         Set<Index> indexes = new HashSet<>();

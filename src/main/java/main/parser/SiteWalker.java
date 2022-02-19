@@ -1,12 +1,11 @@
-package parser;
+package main.parser;
 
-import indexer.PageIndexer;
-import model.Page;
+import main.indexer.PageIndexer;
+import main.model.Page;
 import org.jsoup.Connection;
 import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import repository.DBConnection;
+import main.repository.DBConnection;
 
 import java.io.IOException;
 import java.net.SocketTimeoutException;
@@ -14,7 +13,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.RecursiveTask;
 

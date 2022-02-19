@@ -1,7 +1,9 @@
-import model.Finding;
-import parser.SiteWalker;
-import repository.DBConnection;
-import searcher.Searcher;
+package main;
+
+import main.model.Finding;
+import main.parser.SiteWalker;
+import main.repository.DBConnection;
+import main.searcher.Searcher;
 
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;

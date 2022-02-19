@@ -1,8 +1,8 @@
-package repository;
+package main.repository;
 
-import model.Index;
-import model.Lemma;
-import model.Page;
+import main.model.Index;
+import main.model.Lemma;
+import main.model.Page;
 import org.jsoup.Jsoup;
 
 import java.io.IOException;
@@ -13,7 +13,6 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -76,22 +75,27 @@ public class DBConnection {
     }
     
     
+    public static int getPageCount() {
+        String sql = "SELECT count(*) AS count FROM _page";
+        return executeGetIntQuery(sql, "count");
+    }
+    
     public static int getPageId(String path) {
         String sql = "SELECT _id FROM _page WHERE _path='" + path + "'";
-        return executeGetIntQuery(sql);
+        return executeGetIntQuery(sql, "_id");
     }
     
     public static int getLemmaId(String lemma) {
         String sql = "SELECT _id FROM _lemma WHERE _lemma='" + lemma + "'";
-        return executeGetIntQuery(sql);
+        return executeGetIntQuery(sql, "_id");
     }
     
-    private static int executeGetIntQuery(String sql) {
+    private static int executeGetIntQuery(String sql, String column) {
         int result = 0;
         try (PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()){
             resultSet.next();
-            result = resultSet.getInt("_id");
+            result = resultSet.getInt(column);
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -169,34 +173,6 @@ public class DBConnection {
         }
         return lemmaSet;
     }
-    
-//    public static List<Integer> findPages(Set<Lemma> lemmas) {
-//        StringBuffer sql = new StringBuffer();
-//        lemmas.stream()
-//                .mapToInt(Lemma::getId)
-//                .forEach(lemmaId -> {
-//                    if (sql.isEmpty()) {
-//                        sql.append("SELECT _page_id FROM _index WHERE _lemma_id = ").append(lemmaId);
-//                    } else {
-//                        sql.insert(0, "SELECT _page_id FROM (")
-//                                .append(")_index WHERE _lemma_id = ")
-//                                .append(lemmaId);
-//                    }
-//                });
-//
-//        List<Integer> pages = new ArrayList<>();
-//        try (PreparedStatement statement = connection.prepareStatement(sql.toString());
-//             ResultSet resultSet = statement.executeQuery()){
-//
-//            while(resultSet.next()) {
-//                pages.add(resultSet.getInt("_id"));
-//            }
-//        } catch (SQLException e) {
-//            e.printStackTrace();
-//        }
-//        return pages;
-//
-//    }
     
     public static Set<Index> findIndexes(int id, String field) {
         String sql = "SELECT * FROM _index WHERE " + field + " = " + id;

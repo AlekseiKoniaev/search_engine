@@ -1,10 +1,10 @@
-package indexer;
+package main.indexer;
 
-import lemmatizer.Lemmatizer;
-import model.Index;
-import model.Page;
+import main.lemmatizer.Lemmatizer;
+import main.model.Index;
+import main.model.Page;
 import org.jsoup.nodes.Document;
-import repository.DBConnection;
+import main.repository.DBConnection;
 
 import java.util.HashMap;
 import java.util.HashSet;
