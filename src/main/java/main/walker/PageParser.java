@@ -1,4 +1,4 @@
-package main.parser;
+package main.walker;
 
 import main.model.Page;
 import org.jsoup.nodes.Document;

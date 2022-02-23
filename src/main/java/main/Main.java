@@ -1,9 +1,11 @@
 package main;
 
 import main.model.Finding;
-import main.parser.SiteWalker;
 import main.repository.DBConnection;
+import main.repository.HibernateConnection;
 import main.searcher.Searcher;
+import main.walker.SiteWalker;
+import org.springframework.orm.hibernate5.HibernateTemplate;
 
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
@@ -14,8 +16,28 @@ public class Main {
     
     public static void main(String[] args) {
     
-        search();
+        test();
         
+    }
+    
+    private static void test() {
+        HibernateConnection.init();
+        HibernateConnection.getPageCount();
+    }
+    
+    private static void indexSiteHibernate() {
+        HibernateConnection.init();
+        SiteWalker walker = new SiteWalker(SITE_URL);
+        ForkJoinPool.commonPool().invoke(walker);
+        HibernateConnection.close();
+    }
+    
+    private static void searchHibernate() {
+        HibernateConnection.init();
+        Searcher searcher = new Searcher();
+        Set<Finding> result = searcher.search("купить новый смартфон");
+        result.forEach(System.out::println);
+        HibernateConnection.close();
     }
     
     private static void indexSite() {

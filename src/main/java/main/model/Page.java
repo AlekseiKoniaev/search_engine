@@ -1,56 +1,55 @@
 package main.model;
 
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+import org.hibernate.Hibernate;
+import org.hibernate.annotations.Type;
+import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
 import java.util.Objects;
 
+@NoArgsConstructor
+@Entity
+@Getter
+@Setter
+@ToString
 public class Page implements Comparable<Page> {
     
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", nullable = false)
     private int id;
-    private String path;
-    private int code;
-    private Document document;
     
-    public Page() {}
+    @Column(nullable = false, unique = true, length = 333)
+    private String path;
+    
+    @Column(nullable = false)
+    private int code;
+    
+    @Column(nullable = false)
+    @Type(type = "org.hibernate.type.TextType")
+    private String content;
+    
+//    @Column(name = "site_id", nullable = false)
+//    private int siteId;
+    
     
     public Page(String path) {
         this.path = path;
     }
     
-    public int getId() {
-        return id;
-    }
-    
-    public void setId(int id) {
-        this.id = id;
-    }
-    
-    public void setPath(String path) {
-        this.path = path;
-    }
-    
-    public String getPath() {
-        return path;
-    }
-    
-    public int getCode() {
-        return code;
-    }
-    
-    public void setCode(int code) {
-        this.code = code;
-    }
-    
     public Document getDocument() {
-        return document;
-    }
-    
-    public void setDocument(Document document) {
-        this.document = document;
-    }
-    
-    public String getContent() {
-        return Objects.requireNonNullElse(document, "").toString();
+        return Jsoup.parse(content);
     }
     
     @Override
@@ -61,15 +60,14 @@ public class Page implements Comparable<Page> {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        
+        if (o == null || Hibernate.getClass(this) != Hibernate.getClass(o)) return false;
         Page page = (Page) o;
-    
-        return Objects.equals(path, page.path);
+        return id != 0 && Objects.equals(id, page.id);
     }
     
     @Override
     public int hashCode() {
-        return path != null ? path.hashCode() : 0;
+        return getClass().hashCode();
     }
+    
 }

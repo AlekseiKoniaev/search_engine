@@ -1,0 +1,15 @@
+spring:
+    datasource:
+        url: jdbc:mysql://localhost:3306/search_engine?useSSL=false
+        username: search_engine
+        password: 9en2w0oc
+    jpa:
+        hibernate:
+            ddl-auto: none
+sites:
+    url: http://www.playback.ru
+        name: PlayBack.ru
+user-agent:
+    value: Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6
+web-interface:
+    value: /admin

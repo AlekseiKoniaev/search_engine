@@ -1,0 +1,7 @@
+package main.model.enums;
+
+public enum Status {
+    INDEXING,
+    INDEXED,
+    FAILED
+}

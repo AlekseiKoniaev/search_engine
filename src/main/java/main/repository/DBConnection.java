@@ -24,9 +24,9 @@ public class DBConnection {
 
     private static Connection connection;
     
-    private static final String URL = "jdbc:mysql://localhost:3306/search_engine";
-    private static final String DB_USER = "search_engine";
-    private static final String DB_PASSWORD = "9en2w0oc";
+    private static final String URL = "jdbc:mysql://localhost:3306/test";
+    private static final String DB_USER = "root";
+    private static final String DB_PASSWORD = "testtest";
     
     public static void init() {
         connect();
@@ -105,17 +105,17 @@ public class DBConnection {
     
     public static Page getPage(String path) {
         String sql = "SELECT _id, _code, _content FROM _page WHERE _path='" + path + "'";
-        Page result = new Page(path);
+        Page page = new Page(path);
         try (PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()){
             resultSet.next();
-            result.setId(resultSet.getInt("_id"));
-            result.setCode(resultSet.getInt("_code"));
-            result.setDocument(Jsoup.parse(resultSet.getString("_content")));
+            page.setId(resultSet.getInt("_id"));
+            page.setCode(resultSet.getInt("_code"));
+            page.setContent(resultSet.getString("_content"));
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return result;
+        return page;
     }
     
     public static Page getPage(int pageId) {
@@ -127,7 +127,7 @@ public class DBConnection {
             page.setId(resultSet.getInt("_id"));
             page.setPath(resultSet.getString("_path"));
             page.setCode(resultSet.getInt("_code"));
-            page.setDocument(Jsoup.parse(resultSet.getString("_content")));
+            page.setContent(resultSet.getString("_content"));
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -174,28 +174,28 @@ public class DBConnection {
         return lemmaSet;
     }
     
-    public static Set<Index> findIndexes(int id, String field) {
-        String sql = "SELECT * FROM _index WHERE " + field + " = " + id;
-        return executeFindIndex(sql);
-    }
+//    public static Set<Index> findIndexes(int id, String field) {
+//        String sql = "SELECT * FROM _index WHERE " + field + " = " + id;
+//        return executeFindIndex(sql);
+//    }
     
-    private static Set<Index> executeFindIndex(String sql) {
-        Set<Index> indexes = new HashSet<>();
-        try (PreparedStatement statement = connection.prepareStatement(sql);
-             ResultSet resultSet = statement.executeQuery()) {
-        
-            while(resultSet.next()) {
-                int pageId = resultSet.getInt("_page_id");
-                int lemmaId = resultSet.getInt("_lemma_id");
-                float rank = resultSet.getFloat("_rank");
-                Index index = new Index(pageId, lemmaId, rank);
-                indexes.add(index);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return indexes;
-    }
+//    private static Set<Index> executeFindIndex(String sql) {
+//        Set<Index> indexes = new HashSet<>();
+//        try (PreparedStatement statement = connection.prepareStatement(sql);
+//             ResultSet resultSet = statement.executeQuery()) {
+//
+//            while(resultSet.next()) {
+//                int pageId = resultSet.getInt("_page_id");
+//                int lemmaId = resultSet.getInt("_lemma_id");
+//                float rank = resultSet.getFloat("_rank");
+//                Index index = new Index(pageId, lemmaId, rank);
+//                indexes.add(index);
+//            }
+//        } catch (SQLException e) {
+//            e.printStackTrace();
+//        }
+//        return indexes;
+//    }
     
     
     public static void insertPage(Page page) {
@@ -204,11 +204,7 @@ public class DBConnection {
                 .replaceAll("'", "\\\\'");      // экранирование символа
         String sql = "INSERT INTO _page(_path, _code, _content) " +
                 "VALUES ('" + page.getPath() + "', " + page.getCode() + ", '" + content + "')";
-        try {
-            connection.createStatement().execute(sql);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        executeInsertQuery(sql);
     }
     
     public static void insertLemmas(Set<String> lemmas) {
@@ -228,27 +224,27 @@ public class DBConnection {
         return buffer.deleteCharAt(buffer.length() - 1);
     }
     
-    public static void insertIndexes(Set<Index> indexes) {
-        synchronized (connection) {
-            String sql = "INSERT INTO _index(_page_id, _lemma_id, _rank) " +
-                    "VALUES " + buildIndexValues(indexes);
-            executeInsertQuery(sql);
-        }
-    }
+//    public static void insertIndexes(Set<Index> indexes) {
+//        synchronized (connection) {
+//            String sql = "INSERT INTO _index(_page_id, _lemma_id, _rank) " +
+//                    "VALUES " + buildIndexValues(indexes);
+//            executeInsertQuery(sql);
+//        }
+//    }
     
-    private static StringBuffer buildIndexValues(Set<Index> indexes) {
-        StringBuffer buffer = new StringBuffer();
-        for (Index index : indexes) {
-            buffer.append("(")
-                    .append(index.getPageId())
-                    .append(",")
-                    .append(index.getLemmaId())
-                    .append(",")
-                    .append(index.getRank())
-                    .append("),");
-        }
-        return buffer.deleteCharAt(buffer.length() - 1);
-    }
+//    private static StringBuffer buildIndexValues(Set<Index> indexes) {
+//        StringBuffer buffer = new StringBuffer();
+//        for (Index index : indexes) {
+//            buffer.append("(")
+//                    .append(index.getPageId())
+//                    .append(",")
+//                    .append(index.getLemmaId())
+//                    .append(",")
+//                    .append(index.getRank())
+//                    .append("),");
+//        }
+//        return buffer.deleteCharAt(buffer.length() - 1);
+//    }
     
     private static void executeInsertQuery(String sql) {
         try {

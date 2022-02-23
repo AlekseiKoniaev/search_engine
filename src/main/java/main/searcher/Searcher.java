@@ -1,16 +1,17 @@
 package main.searcher;
 
 import main.lemmatizer.Lemmatizer;
+import main.model.Field;
 import main.model.Finding;
 import main.model.Index;
 import main.model.Lemma;
 import main.model.Page;
+import main.repository.HibernateConnection;
 import org.jsoup.nodes.Document;
-import main.repository.DBConnection;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -20,13 +21,13 @@ import java.util.stream.Collectors;
 
 public class Searcher {
     
-    private Map<String, Float> fields;
-    private Set<Lemma> lemmas;
-    private Set<Index> indexes;
-    private Set<Page> pages;
+    private List<Field> fields;
+    private List<Lemma> lemmas;
+    private List<Index> indexes;
+    private List<Page> pages;
     
     public Set<Finding> search(String query) {
-        fields = DBConnection.getFields();
+        fields = HibernateConnection.getFields();
         Lemmatizer lemmatizer = new Lemmatizer(query);
         Set<String> lemmasStr = lemmatizer.getLemmas().keySet();
         lemmas = getLemmas(lemmasStr);
@@ -41,17 +42,17 @@ public class Searcher {
     }
     
     
-    private Set<Lemma> getLemmas(Set<String> lemmasStr) {
-        int thresholdCountPages = (int) (DBConnection.getPageCount() * 0.5);
-        return DBConnection.getLemmas(lemmasStr).stream()
+    private List<Lemma> getLemmas(Set<String> lemmasStr) {
+        int thresholdCountPages = (int) (HibernateConnection.getPageCount() * 0.5);
+        return HibernateConnection.getLemmas(lemmasStr).stream()
                 .filter(lemma -> lemma.getFrequency() < thresholdCountPages)
-                .collect(Collectors.toSet());
+                .collect(Collectors.toList());
     }
     
-    private Set<Index> findIndexes() {
-        Set<Index> indexes = new HashSet<>();
+    private List<Index> findIndexes() {
+        List<Index> indexes = new ArrayList<>();
         for (Lemma lemma : lemmas) {
-            Set<Index> foundIndexes = DBConnection.findIndexes(lemma.getId(), "_lemma_id");
+            List<Index> foundIndexes = HibernateConnection.findIndexes(lemma.getId(), "lemma_id");
             if (indexes.isEmpty()) {
                 indexes.addAll(foundIndexes);
             } else {
@@ -62,48 +63,33 @@ public class Searcher {
         return indexes;
     }
     
-    private void leaveForIdenticalPages(Set<Index> indexes, Set<Index> foundIndexes) {
-        indexes.removeIf(index -> {
-                    for (Index foundIndex : foundIndexes) {
-                        if (foundIndex.getPageId() == index.getPageId()) {
-                            return false;
-                        }
-                    }
-                    return true;
-                }
-        );
+    private void leaveForIdenticalPages(List<Index> indexes, List<Index> foundIndexes) {
+        indexes.removeIf(index -> foundIndexes.stream()
+                .noneMatch(foundIndex -> foundIndex.getId() == index.getId()));
     }
     
-    private void addForIdenticalPages(Set<Index> indexes, Set<Index> foundIndexes) {
-        Set<Index> set = new HashSet<>();
-        for (Index foundIndex : foundIndexes) {
-            for (Index index : indexes) {
-                if (index.getPageId() == foundIndex.getPageId()) {
-                    set.add(foundIndex);
-                    break;
-                }
-            }
-        }
-        indexes.addAll(set);
+    private void addForIdenticalPages(List<Index> indexes, List<Index> foundIndexes) {
+        List<Index> list = foundIndexes.stream()
+                .filter(foundIndex -> indexes.stream()
+                        .anyMatch(index -> index.getId() == foundIndex.getId()))
+                .toList();
+        indexes.addAll(list);
     }
     
-    private Set<Page> getPages() {
-        Set<Page> foundPages = new HashSet<>();
-        foundPages = indexes.stream()
-                .map(Index::getPageId)
+    private List<Page> getPages() {
+        return indexes.stream()
+                .map(Index::getPage)
                 .distinct()
-                .map(DBConnection::getPage)
-                .collect(Collectors.toSet());
-        return foundPages;
+                .collect(Collectors.toList());
     }
     
     private Map<Page, Float> calculateAbsRelevance() {
         Map<Page, Float> pagesAbsRelevance = new HashMap<>();
         for (Page page : pages) {
-            int pageId = page.getId();
+
             float absRelevance = 0.0f;
             for (Index index : indexes) {
-                if (index.getPageId() == pageId) {
+                if (page.equals(index.getPage())) {
                     absRelevance += index.getRank();
                 }
             }
@@ -153,8 +139,9 @@ public class Searcher {
         StringBuilder snippet = new StringBuilder();
         Document document = page.getDocument();
         
-        for (String field : fields.keySet()) {
-            String fieldText = document.select(field).text();
+        for (Field field : fields) {
+            String selector = field.getSelector();
+            String fieldText = document.select(selector).text();
             String fragment = formatFragment(fieldText);
             snippet.append(fragment).append("\t\n");
         }

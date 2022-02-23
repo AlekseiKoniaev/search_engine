@@ -1,23 +1,25 @@
 package main.indexer;
 
 import main.lemmatizer.Lemmatizer;
+import main.model.Field;
 import main.model.Index;
+import main.model.Lemma;
 import main.model.Page;
+import main.repository.HibernateConnection;
 import org.jsoup.nodes.Document;
-import main.repository.DBConnection;
 
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 public class PageIndexer {
     
-    private static Map<String, Float> fields;
+    private static List<Field> fields;
     
     
-    public static void setFields(Map<String, Float> fields) {
+    public static void setFields(List<Field> fields) {
         PageIndexer.fields = fields;
     }
     
@@ -25,13 +27,13 @@ public class PageIndexer {
     private final String path;
     private final Document document;
     private Map<String, Map<String, Integer>> lemmas;
-    private Set<Index> indexes;
+    private List<Index> indexes;
     
     
     public PageIndexer(Page page) {
         this.path = page.getPath();
         this.document = page.getDocument();
-        indexes = new HashSet<>();
+        indexes = new ArrayList<>();
     }
     
     
@@ -43,7 +45,9 @@ public class PageIndexer {
     }
     
     private Map<String, Map<String, Integer>> getLemmasForPage() {
-        return fields.keySet().stream().collect(Collectors.toMap(
+        return fields.stream()
+                .map(Field::getSelector)
+                .collect(Collectors.toMap(
                 selector -> selector, this::getLemmasForField, (a, b) -> b));
     }
     
@@ -58,21 +62,32 @@ public class PageIndexer {
     
     
     private void addLemmasToDB() {
-        Set<String> uniqueLemmas = lemmas.keySet().stream()
+        List<Lemma> uniqueLemmas = lemmas.keySet().stream()
                 .flatMap(selector -> lemmas.get(selector).keySet().stream())
-                .collect(Collectors.toSet());
-        DBConnection.insertLemmas(uniqueLemmas);
+                .distinct()
+                .map(lemmaStr -> {
+                    Lemma lemma = new Lemma();
+                    lemma.setLemma(lemmaStr);
+                    return lemma;
+                })
+                .toList();
+        HibernateConnection.insertLemmas(uniqueLemmas);
     }
     
     
-    private Set<Index> createIndexes() {
+    private List<Index> createIndexes() {
         Map<String, Float> rankForLemmas = calculateRankForLemmas();
-        Set<Index> indexes = new HashSet<>();
-        for (String lemma : rankForLemmas.keySet()) {
-            int pageId = getPageId(path);
-            int lemmaId = getLemmaId(lemma);
-            float rank = rankForLemmas.get(lemma);
-            Index index = new Index(pageId, lemmaId, rank);
+        List<Index> indexes = new ArrayList<>();
+        for (String lemmaStr : rankForLemmas.keySet()) {
+            Page page = getPage(path);
+            Lemma lemma = getLemma(lemmaStr);
+            float rank = rankForLemmas.get(lemmaStr);
+            
+            Index index = new Index();
+            index.setPage(page);
+            index.setLemma(lemma);
+            index.setRank(rank);
+            
             indexes.add(index);
         }
         return indexes;
@@ -80,28 +95,30 @@ public class PageIndexer {
     
     private Map<String, Float> calculateRankForLemmas() {
         Map<String, Float> lemmasWeights = new HashMap<>();
-        for (String selector : fields.keySet()) {
-            float weight = fields.get(selector);
-            Map<String, Integer> lemmasForField = lemmas.get(selector);
-            for (String lemma : lemmasForField.keySet()) {
-                int frequency = lemmasForField.get(lemma);
+        for (Field field : fields) {
+            
+            float weight = field.getWeight();
+            Map<String, Integer> lemmasForField = lemmas.get(field.getSelector());
+            
+            for (String lemmaStr : lemmasForField.keySet()) {
+                int frequency = lemmasForField.get(lemmaStr);
                 float currentRank = weight * frequency;
-                lemmasWeights.merge(lemma, currentRank, Float::sum);
+                lemmasWeights.merge(lemmaStr, currentRank, Float::sum);
             }
         }
         return lemmasWeights;
     }
     
-    private int getPageId(String path) {
-        return DBConnection.getPageId(path);
+    private Page getPage(String path) {
+        return HibernateConnection.getPageByPath(path);
     }
     
-    private int getLemmaId(String lemma) {
-        return DBConnection.getLemmaId(lemma);
+    private Lemma getLemma(String lemma) {
+        return HibernateConnection.getLemmaByLemma(lemma);
     }
     
     
     private void addIndexesToDB() {
-        DBConnection.insertIndexes(indexes);
+        HibernateConnection.insertIndexes(indexes);
     }
 }
