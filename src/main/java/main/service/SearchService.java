@@ -1,6 +1,6 @@
 package main.service;
 
-import main.model.Finding;
+import main.api.response.model.Finding;
 
 import java.util.List;
 

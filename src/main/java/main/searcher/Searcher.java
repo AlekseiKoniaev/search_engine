@@ -2,12 +2,13 @@ package main.searcher;
 
 import main.lemmatizer.Lemmatizer;
 import main.model.Field;
-import main.model.Finding;
+import main.api.response.model.Finding;
 import main.model.Index;
 import main.model.Lemma;
 import main.model.Page;
-import main.repository.HibernateConnection;
+import main.service.impl.IndexingServiceImpl;
 import org.jsoup.nodes.Document;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -21,13 +22,15 @@ import java.util.stream.Collectors;
 
 public class Searcher {
     
+    @Autowired
+    private IndexingServiceImpl indexingService;
     private List<Field> fields;
     private List<Lemma> lemmas;
     private List<Index> indexes;
     private List<Page> pages;
     
     public Set<Finding> search(String query) {
-        fields = HibernateConnection.getFields();
+        fields = indexingService.getFieldService().getAllFields();
         Lemmatizer lemmatizer = new Lemmatizer(query);
         Set<String> lemmasStr = lemmatizer.getLemmas().keySet();
         lemmas = getLemmas(lemmasStr);
@@ -43,8 +46,10 @@ public class Searcher {
     
     
     private List<Lemma> getLemmas(Set<String> lemmasStr) {
-        int thresholdCountPages = (int) (HibernateConnection.getPageCount() * 0.5);
-        return HibernateConnection.getLemmas(lemmasStr).stream()
+        int thresholdCountPages = (int) (indexingService.getPageService().count() * 0.5);
+        return indexingService.getLemmaService()
+                .getLemmasByLemma(lemmasStr.stream().toList())
+                .stream()
                 .filter(lemma -> lemma.getFrequency() < thresholdCountPages)
                 .collect(Collectors.toList());
     }
@@ -52,7 +57,7 @@ public class Searcher {
     private List<Index> findIndexes() {
         List<Index> indexes = new ArrayList<>();
         for (Lemma lemma : lemmas) {
-            List<Index> foundIndexes = HibernateConnection.findIndexes(lemma.getId(), "lemma_id");
+            List<Index> foundIndexes = indexingService.getIndexService().findIndexesByLemmaId(lemma.getId());
             if (indexes.isEmpty()) {
                 indexes.addAll(foundIndexes);
             } else {

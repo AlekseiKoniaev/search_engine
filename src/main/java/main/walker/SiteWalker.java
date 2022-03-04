@@ -1,9 +1,12 @@
 package main.walker;
 
+import lombok.Getter;
+import main.config.YAMLConfig;
 import main.indexer.PageIndexer;
 import main.model.Page;
 import main.model.Site;
-import main.repository.HibernateConnection;
+import main.model.enums.Status;
+import main.service.impl.IndexingServiceImpl;
 import org.jsoup.Connection;
 import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
@@ -15,76 +18,90 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.RecursiveTask;
 
 public class SiteWalker extends RecursiveTask<Void> {
     
-    private static final String USER_AGENT = "Mozilla/5.0 (Windows; U; " +
-            "WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6";
-    private static final String REFERRER = "http://www.google.com";
+    private final IndexingServiceImpl service;
     
-    
-    private final Site site;
+    @Getter
     private final Page page;
+    private final YAMLConfig config;
     private final Set<String> visitedPages;
+    private List<SiteWalker> walkerList;
     
     
-    public SiteWalker(String URL) {
-        URL = URL.endsWith("/") ? URL.substring(0, URL.length() - 1) : URL;
-        site = new Site(URL);
-        page = new Page("/");
-        visitedPages = Collections.synchronizedSet(new HashSet<>());
-        PageIndexer.setFields(HibernateConnection.getFields());
+    public SiteWalker(Site site, YAMLConfig config, IndexingServiceImpl service) {
+        this(new Page("/"), config, service, Collections.synchronizedSet(new HashSet<>()));
+        page.setSite(site);
     }
     
-    private SiteWalker(Site site, String path, Set<String> visitedPages) {
-        this.site = site;
-        page = new Page(path);
+    public SiteWalker(Page page, YAMLConfig config, IndexingServiceImpl service) {
+        this(page, config, service, new HashSet<>());
+    }
+    
+    private SiteWalker(Page page,
+                       YAMLConfig config,
+                       IndexingServiceImpl service,
+                       Set<String> visitedPages) {
+        this.page = page;
+        this.config = config;
+        this.service = service;
         this.visitedPages = visitedPages;
     }
     
     @Override
     protected Void compute() {
+    
+        if (Thread.currentThread().isInterrupted()) {
+            return null;
+        }
         
         if (visitPage()) {
     
-            PageIndexer indexer = new PageIndexer(page);
-            indexer.index();
-            
-            PageParser parser = new PageParser(site.getUrl(), page);
-            
-            Set<String> parsedPages = parser.parseLink();
-            parsedPages.removeIf(visitedPages::contains);
-            
-            List<SiteWalker> walkerList = new ArrayList<>();
-            for (String path : parsedPages) {
-                SiteWalker walker = new SiteWalker(site, path, visitedPages);
+            index();
+    
+            walkerList = new ArrayList<>();
+            for (String path : getParsedPages()) {
+                Page page = new Page(path);
+                page.setSite(this.page.getSite());
+                SiteWalker walker = new SiteWalker(page, config, service, visitedPages);
                 walker.fork();
                 walkerList.add(walker);
             }
-            
-            for (SiteWalker walker : walkerList) {
-                walker.join();
-            }
-    
+            walkerList.forEach(ForkJoinTask::join);
         }
+        
         return null;
     }
     
+    public void indexOnePage() {
+        visitPage();
+        index();
+    }
+    
     private boolean visitPage() {
+        
+        Site site = page.getSite();
         String path = page.getPath();
+        
         synchronized (site) {
-            if (visitedPages.contains(path)) {
+            site = service.getSiteService().getSiteByUrl(site.getUrl());
+            if (visitedPages.contains(path) || site.getStatus() != Status.INDEXING) {
                 return false;
             } else {
                 visitedPages.add(path);
+                site.updateStatusTime();
+                service.getSiteService().saveSite(site);
             }
         }
+        
         synchronized (page) {
             try {
                 Connection.Response response = Jsoup.connect(site.getUrl() + path)
-                        .userAgent(USER_AGENT)
-                        .referrer(REFERRER)
+                        .userAgent(config.getUserAgent())
+                        .referrer(config.getReferrer())
                         .execute();
                 page.setCode(response.statusCode());
                 page.setContent(response.parse().toString());
@@ -97,10 +114,22 @@ public class SiteWalker extends RecursiveTask<Void> {
                 return false;
             }
             
-            HibernateConnection.insertPage(page);
+            service.getPageService().savePage(page);
         }
         
         return page.getCode() == 200;
+    }
+    
+    private void index() {
+        PageIndexer indexer = new PageIndexer(page, service);
+        indexer.index();
+    }
+    
+    private Set<String> getParsedPages() {
+        PageParser parser = new PageParser(page);
+        Set<String> parsedPages = parser.parseLink();
+        parsedPages.removeIf(visitedPages::contains);
+        return parsedPages;
     }
     
 }

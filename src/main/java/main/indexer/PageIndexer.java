@@ -5,8 +5,7 @@ import main.model.Field;
 import main.model.Index;
 import main.model.Lemma;
 import main.model.Page;
-import main.repository.HibernateConnection;
-import org.jsoup.nodes.Document;
+import main.service.impl.IndexingServiceImpl;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,28 +15,24 @@ import java.util.stream.Collectors;
 
 public class PageIndexer {
     
-    private static List<Field> fields;
     
+    private final IndexingServiceImpl indexingService;
     
-    public static void setFields(List<Field> fields) {
-        PageIndexer.fields = fields;
-    }
-    
-    
-    private final String path;
-    private final Document document;
+    private final Page page;
+    private List<Field> fields;
     private Map<String, Map<String, Integer>> lemmas;
     private List<Index> indexes;
     
     
-    public PageIndexer(Page page) {
-        this.path = page.getPath();
-        this.document = page.getDocument();
+    public PageIndexer(Page page, IndexingServiceImpl indexingService) {
+        this.indexingService = indexingService;
+        this.page = page;
         indexes = new ArrayList<>();
     }
     
     
     public void index() {
+        fields = indexingService.getFieldService().getAllFields();
         lemmas = getLemmasForPage();
         addLemmasToDB();
         indexes = createIndexes();
@@ -57,7 +52,7 @@ public class PageIndexer {
     }
 
     private String extractFragment(String selector) {
-        return document.select(selector).text();
+        return page.getDocument().select(selector).text();
     }
     
     
@@ -68,10 +63,13 @@ public class PageIndexer {
                 .map(lemmaStr -> {
                     Lemma lemma = new Lemma();
                     lemma.setLemma(lemmaStr);
+                    lemma.setSite(page.getSite());
                     return lemma;
                 })
                 .toList();
-        HibernateConnection.insertLemmas(uniqueLemmas);
+        synchronized (page.getSite()) {
+            indexingService.getLemmaService().saveLemmas(uniqueLemmas);
+        }
     }
     
     
@@ -79,7 +77,7 @@ public class PageIndexer {
         Map<String, Float> rankForLemmas = calculateRankForLemmas();
         List<Index> indexes = new ArrayList<>();
         for (String lemmaStr : rankForLemmas.keySet()) {
-            Page page = getPage(path);
+            Page page = getPage(this.page.getPath());
             Lemma lemma = getLemma(lemmaStr);
             float rank = rankForLemmas.get(lemmaStr);
             
@@ -110,15 +108,17 @@ public class PageIndexer {
     }
     
     private Page getPage(String path) {
-        return HibernateConnection.getPageByPath(path);
+        return indexingService.getPageService().getPageByPath(path);
     }
     
     private Lemma getLemma(String lemma) {
-        return HibernateConnection.getLemmaByLemma(lemma);
+        return indexingService.getLemmaService().getLemmaByLemma(lemma);
     }
     
     
     private void addIndexesToDB() {
-        HibernateConnection.insertIndexes(indexes);
+        synchronized (page.getSite()) {
+            indexingService.getIndexService().saveIndexes(indexes);
+        }
     }
 }

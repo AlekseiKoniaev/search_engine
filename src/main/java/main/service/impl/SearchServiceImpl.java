@@ -1,7 +1,7 @@
 package main.service.impl;
 
 import lombok.RequiredArgsConstructor;
-import main.model.Finding;
+import main.api.response.model.Finding;
 import main.repository.FieldRepository;
 import main.repository.IndexRepository;
 import main.repository.LemmaRepository;

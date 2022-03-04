@@ -14,6 +14,8 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 import java.util.Objects;
@@ -23,7 +25,7 @@ import java.util.Objects;
 @Getter
 @Setter
 @ToString
-public class Page implements Comparable<Page> {
+public class Page {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,8 +42,9 @@ public class Page implements Comparable<Page> {
     @Type(type = "org.hibernate.type.TextType")
     private String content;
     
-//    @Column(name = "site_id", nullable = false)
-//    private int siteId;
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "site_id", nullable = false)
+    private Site site;
     
     
     public Page(String path) {
@@ -53,21 +56,20 @@ public class Page implements Comparable<Page> {
     }
     
     @Override
-    public int compareTo(Page o) {
-        return path.compareTo(o.path);
-    }
-    
-    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || Hibernate.getClass(this) != Hibernate.getClass(o)) return false;
+        if (o == null || getClass() != o.getClass()) return false;
+        
         Page page = (Page) o;
-        return id != 0 && Objects.equals(id, page.id);
+        
+        if (!path.equals(page.path)) return false;
+        return site.equals(page.site);
     }
     
     @Override
     public int hashCode() {
-        return getClass().hashCode();
+        int result = path.hashCode();
+        result = 31 * result + site.hashCode();
+        return result;
     }
-    
 }

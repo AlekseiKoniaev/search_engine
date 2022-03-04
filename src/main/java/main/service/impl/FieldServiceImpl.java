@@ -4,10 +4,12 @@ import main.model.Field;
 import main.repository.FieldRepository;
 import main.service.FieldService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Service
 public class FieldServiceImpl implements FieldService {
     
     @Autowired
@@ -32,5 +34,11 @@ public class FieldServiceImpl implements FieldService {
             fieldList.add(field);
         }
         return fieldList;
+    }
+    
+    public void fillTable() {
+        Field title = new Field("title", "title", 1.0f);
+        Field body = new Field("body", "body", 0.8f);
+        insertFields(List.of(title, body));
     }
 }

@@ -11,6 +11,8 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
 import java.util.Objects;
 
 @NoArgsConstructor
@@ -31,30 +33,45 @@ public class Lemma implements Comparable<Lemma> {
     @Column(nullable = false)
     private int frequency;
     
-//    @Column(nullable = false)
-//    private int siteId;
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "site_id", nullable = false)
+    private Site site;
     
     
     public void incrementFrequency() {
         ++frequency;
     }
     
-    @Override
-    public int compareTo(Lemma o) {
-        return frequency != o.frequency ?
-                Integer.compare(frequency, o.frequency) : lemma.compareTo(o.lemma);
+    public void decrementFrequency() {
+        --frequency;
     }
     
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || Hibernate.getClass(this) != Hibernate.getClass(o)) return false;
-        Lemma lemma = (Lemma) o;
-        return id != 0 && Objects.equals(id, lemma.id);
+        if (o == null || getClass() != o.getClass()) return false;
+        
+        Lemma lemma1 = (Lemma) o;
+        
+        if (!lemma.equals(lemma1.lemma)) return false;
+        return site.equals(lemma1.site);
     }
     
     @Override
     public int hashCode() {
-        return getClass().hashCode();
+        int result = lemma.hashCode();
+        result = 31 * result + site.hashCode();
+        return result;
+    }
+    
+    @Override
+    public int compareTo(Lemma o) {
+        int diff = site.getId() - o.site.getId();
+        if (diff != 0) {
+            return diff;
+        } else {
+            return frequency != o.frequency ?
+                    Integer.compare(frequency, o.frequency) : lemma.compareTo(o.lemma);
+        }
     }
 }

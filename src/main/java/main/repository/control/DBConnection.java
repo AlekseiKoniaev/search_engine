@@ -1,4 +1,4 @@
-package main.repository;
+package main.repository.control;
 
 import main.model.Index;
 import main.model.Lemma;

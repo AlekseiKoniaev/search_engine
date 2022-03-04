@@ -11,8 +11,8 @@ public class PageParser {
     private final String rootPath;
     private final Document document;
     
-    public PageParser(String rootPath, Page page) {
-        this.rootPath = rootPath;
+    public PageParser(Page page) {
+        this.rootPath = page.getSite().getUrl();
         this.document = page.getDocument();
     }
     

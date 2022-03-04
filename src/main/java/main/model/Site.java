@@ -1,10 +1,10 @@
 package main.model;
 
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import main.model.enums.Status;
-import org.hibernate.annotations.Type;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -22,19 +22,20 @@ import java.time.LocalDateTime;
 public class Site {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
     private int id;
 
-    @Enumerated(EnumType.ORDINAL)
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Status status;
+    private volatile Status status;
 
+    @Setter(AccessLevel.NONE)
     @Column(name = "status_time", nullable = false)
     private LocalDateTime statusTime;
 
-    @Column(name = "last_error")
-    @Type(type = "org.hibernate.type.TextType")
+    @Setter(AccessLevel.NONE)
+    @Column(name = "last_error", length = 500)
     private String lastError;
 
     @Column(nullable = false, unique = true)
@@ -45,9 +46,17 @@ public class Site {
 
     public Site(String url) {
         this.url = url;
-        name = url;     // todo : get name from config
-        status = Status.INDEXING;
+        status = Status.NOT_INDEXED;
         statusTime = LocalDateTime.now();
         lastError = null;   // todo : error processing
+    }
+    
+    public synchronized void setStatus(Status status) {
+        this.status = status;
+        updateStatusTime();
+    }
+    
+    public synchronized void updateStatusTime() {
+        statusTime = LocalDateTime.now();
     }
 }
