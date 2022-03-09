@@ -29,13 +29,13 @@ public class Main {
 //        HibernateConnection.close();
 //    }
     
-    private static void searchHibernate() {
-        HibernateConnection.init();
-        Searcher searcher = new Searcher();
-        Set<Finding> result = searcher.search("купить новый смартфон");
-        result.forEach(System.out::println);
-        HibernateConnection.close();
-    }
+//    private static void searchHibernate() {
+//        HibernateConnection.init();
+//        Searcher searcher = new Searcher();
+//        Set<Finding> result = searcher.search("купить новый смартфон");
+//        result.forEach(System.out::println);
+//        HibernateConnection.close();
+//    }
     
 //    private static void indexSite() {
 //        DBConnection.init();
@@ -44,11 +44,11 @@ public class Main {
 //        DBConnection.close();
 //    }
     
-    private static void search() {
-        DBConnection.connect();
-        Searcher searcher = new Searcher();
-        Set<Finding> result = searcher.search("купить новый смартфон");
-        result.forEach(System.out::println);
-        DBConnection.close();
-    }
+//    private static void search() {
+//        DBConnection.connect();
+//        Searcher searcher = new Searcher();
+//        Set<Finding> result = searcher.search("купить новый смартфон");
+//        result.forEach(System.out::println);
+//        DBConnection.close();
+//    }
 }

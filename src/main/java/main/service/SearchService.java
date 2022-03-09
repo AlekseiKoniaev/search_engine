@@ -1,10 +1,9 @@
 package main.service;
 
-import main.api.response.model.Finding;
-
-import java.util.List;
+import main.api.response.Response;
+import org.springframework.http.ResponseEntity;
 
 public interface SearchService {
     
-    List<Finding> search();
+    ResponseEntity<Response> search(String query, String site, int offset, int limit);
 }

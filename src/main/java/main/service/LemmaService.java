@@ -14,7 +14,9 @@ public interface LemmaService {
     void saveLemmas(List<Lemma> lemmas);
     Lemma getLemmaById(int id);
     Lemma getLemmaByLemma(String lemma);
-    List<Lemma> getLemmasByLemma(List<String> lemmas);
+    Lemma getLemmaByLemmaAndSite(String lemma, Site site);
+//    List<Lemma> getLemmasByLemma(List<String> lemmas);
+    List<Lemma> getLemmasByLemmaAndSite(List<String> lemmas, Site site);
     int countForSite(Site site);
     void deleteBySite(Site site);
     

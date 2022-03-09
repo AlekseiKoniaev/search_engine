@@ -6,9 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.RecursiveTask;
 
 import static main.model.enums.Status.INDEXED;
@@ -43,31 +41,30 @@ public class WalkerExecutor extends RecursiveTask<Void> {
         return null;
     }
     
-    // todo : remake to boolean
-    public synchronized int stopIndexing(ForkJoinPool pool) {
+    public synchronized boolean stopIndexing(ForkJoinPool pool) {
     
         pool.shutdownNow();
-        int count = 0;
+        boolean successful = true;
         for (SiteWalker walker : walkers) {
-            count += switchStatus(walker);
+            if (!switchStatus(walker)) {
+                successful = false;
+            }
         }
     
-        return count;
+        return successful;
     }
     
     @Transactional
-    private int switchStatus(SiteWalker walker) {
+    private boolean switchStatus(SiteWalker walker) {
     
         Site site = walker.getPage().getSite();
         site.setStatus(INDEXED);
-        int count = 0;
         for (int i = 0; i < 10; i++) {
             indexingService.getSiteService().saveSite(site);
             if (indexingService.getSiteService().getSiteById(site.getId()).getStatus() == INDEXED) {
-                count = i + 1;
-                break;
+                return true;
             }
         }
-        return count;
+        return false;
     }
 }

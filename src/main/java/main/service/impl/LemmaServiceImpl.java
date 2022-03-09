@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class LemmaServiceImpl implements LemmaService {
@@ -54,8 +55,15 @@ public class LemmaServiceImpl implements LemmaService {
     }
     
     @Override
-    public List<Lemma> getLemmasByLemma(List<String> lemmas) {
-        return lemmas.stream().map(this::getLemmaByLemma).toList();
+    public Lemma getLemmaByLemmaAndSite(String lemma, Site site) {
+        return site == null ? getLemmaByLemma(lemma) :
+                lemmaRepository.findByLemmaAndSite(lemma, site.getId());
+    }
+    
+    @Override
+    public List<Lemma> getLemmasByLemmaAndSite(List<String> lemmas, Site site) {
+        return lemmas.stream().map(lemma -> getLemmaByLemmaAndSite(lemma, site))
+                        .filter(Objects::nonNull).toList();
     }
     
     @Override

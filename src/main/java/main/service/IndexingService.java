@@ -1,12 +1,12 @@
 package main.service;
 
-import main.api.response.IndexingResponse;
+import main.api.response.Response;
 import main.api.response.StatResponse;
 
 public interface IndexingService {
     
-    IndexingResponse startIndexing();
-    IndexingResponse stopIndexing();
-    IndexingResponse indexPage(String url);
+    Response startIndexing();
+    Response stopIndexing();
+    Response indexPage(String url);
     StatResponse statistics();
 }

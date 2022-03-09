@@ -2,8 +2,8 @@ package main.service.impl;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import main.api.response.IndexingErrorResponse;
-import main.api.response.IndexingResponse;
+import main.api.response.ErrorResponse;
+import main.api.response.Response;
 import main.api.response.StatResponse;
 import main.api.response.model.SiteInfo;
 import main.config.YAMLConfig;
@@ -19,16 +19,12 @@ import main.service.PageService;
 import main.service.SiteService;
 import main.walker.SiteWalker;
 import main.walker.WalkerExecutor;
-import org.hibernate.Transaction;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
@@ -40,9 +36,10 @@ import static main.model.enums.Status.INDEXING;
 @RequiredArgsConstructor
 public class IndexingServiceImpl implements IndexingService {
     
-    private final String INDEXING_RUN = "Индексация уже запущена";
-    private final String INDEXING_NOT_RUN = "Индексация не запущена";
-    private final String SITE_NOT_FOUND = "Данная страница находится за " +
+    private static final String INDEXING_RUN = "Индексация уже запущена";
+    private static final String INDEXING_NOT_RUN = "Индексация не запущена";
+    private static final String INDEXING_ENDS = "Индексация завершается";
+    private static final String SITE_NOT_FOUND = "Данная страница находится за " +
             "пределами сайтов, указанных в конфигурационном файле";
     
     @Autowired
@@ -74,12 +71,12 @@ public class IndexingServiceImpl implements IndexingService {
 
     
     @Override
-    public IndexingResponse startIndexing() {
+    public Response startIndexing() {
         
         List<Site> sites = getSites();
         
         if (sites.stream().anyMatch(site -> (site.getStatus() == INDEXING))) {
-            return new IndexingErrorResponse(INDEXING_RUN);
+            return new ErrorResponse(INDEXING_RUN);
         }
         
         List<SiteWalker> walkers = sites.stream().map(this::prepareToIndexing).toList();
@@ -87,26 +84,25 @@ public class IndexingServiceImpl implements IndexingService {
         pool = new ForkJoinPool();
         pool.execute(walkerExecutor);
         
-        return new IndexingResponse();
+        return new Response();
     }
     
     @Override
-    public IndexingResponse stopIndexing() {
+    public Response stopIndexing() {
     
         if (pool.isTerminated()) {
-            return new IndexingErrorResponse(INDEXING_NOT_RUN);
+            return new ErrorResponse(INDEXING_NOT_RUN);
         } else if (pool.isTerminating()) {
-            return new IndexingErrorResponse("Индексация завершается");
+            return new ErrorResponse(INDEXING_ENDS);
         }
         
-        int result = walkerExecutor.stopIndexing(pool);
+        boolean result = walkerExecutor.stopIndexing(pool);
         
-        // todo : remake to IndexingResponse(boolean)
-        return new IndexingErrorResponse(result);
+        return new Response(result);
     }
     
     @Override
-    public IndexingResponse indexPage(String url) {
+    public Response indexPage(String url) {
         
         Site site = getSites().stream()
                 .filter(s -> url.startsWith(s.getUrl()))
@@ -114,9 +110,9 @@ public class IndexingServiceImpl implements IndexingService {
                 .orElse(null);
         
         if (site == null) {
-            return new IndexingErrorResponse(SITE_NOT_FOUND);
+            return new ErrorResponse(SITE_NOT_FOUND);
         } else if (site.getStatus() == INDEXING) {
-            return new IndexingErrorResponse(INDEXING_RUN);
+            return new ErrorResponse(INDEXING_RUN);
         }
         
         String path = url.replaceAll(site.getUrl(), "");
@@ -130,7 +126,7 @@ public class IndexingServiceImpl implements IndexingService {
         page.getSite().setStatus(INDEXED);
         siteService.saveSite(site);
     
-        return new IndexingResponse();
+        return new Response();
     }
     
     @Override

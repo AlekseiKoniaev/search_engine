@@ -7,13 +7,12 @@ import main.api.response.model.Statistics;
 import java.util.List;
 
 @Getter
-public class StatResponse {
+public class StatResponse extends Response {
     
-    private final boolean result;
     private final Statistics statistics;
     
     public StatResponse(List<SiteInfo> detailed) {
-        result = true;
+        super(true);
         statistics = new Statistics(detailed);
     }
     
