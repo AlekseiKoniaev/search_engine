@@ -1,24 +1,61 @@
 package main.service;
 
 import main.model.Lemma;
-import main.model.Page;
 import main.model.Site;
+import main.repository.LemmaRepository;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 
-public interface LemmaService {
+@Service
+public class LemmaService {
     
-//    void saveLemma(Lemma lemma);
-    void decrementAndUpdateLemma(Lemma lemma);
-    void incrementAndInsertOrUpdateLemma(Lemma lemma);
-    void saveLemmas(List<Lemma> lemmas);
-    Lemma getLemmaById(int id);
-    Lemma getLemmaByLemma(String lemma);
-    Lemma getLemmaByLemmaAndSite(String lemma, Site site);
-//    List<Lemma> getLemmasByLemma(List<String> lemmas);
-    List<Lemma> getLemmasByLemmaAndSite(List<String> lemmas, Site site);
-    int countForSite(Site site);
-    void deleteBySite(Site site);
+    private final LemmaRepository lemmaRepository;
     
-    void deleteLemma(Lemma lemma);
+    
+    public LemmaService(LemmaRepository lemmaRepository) {
+        this.lemmaRepository = lemmaRepository;
+    }
+    
+    
+    public void saveLemmas(List<Lemma> lemmas) {
+        lemmaRepository.incrementInsertLemmas(lemmas);
+    }
+    
+    public Lemma getLemmaById(int id) {
+        return lemmaRepository.findById(id);
+    }
+    
+    public Lemma getLemmaByLemmaAndSite(String lemma, Site site) {
+        return site == null ?
+                lemmaRepository.findByLemma(lemma) :
+                lemmaRepository.findByLemmaAndSiteId(lemma, site.getId());
+    }
+    
+    public List<Lemma> getLemmasByLemmaAndSite(List<String> lemmas, Site site) {
+        return lemmas.stream().map(lemma -> getLemmaByLemmaAndSite(lemma, site))
+                        .filter(Objects::nonNull).toList();
+    }
+    
+    public int countBySiteId(int siteId) {
+        return lemmaRepository.countBySiteId(siteId);
+    }
+    
+    public void decrementAndUpdateLemma(Lemma lemma) {
+        
+        Lemma foundLemma = lemmaRepository.findByLemma(lemma.getLemma());
+        
+        if (foundLemma == null) {
+            return;
+        } else if (foundLemma.getFrequency() > 1) {
+            lemmaRepository.decrementAndUpdateLemma(lemma.getLemma(), lemma.getSiteId());
+        } else {
+            lemmaRepository.deleteByLemmaAndSiteId(foundLemma.getLemma(), foundLemma.getSiteId());
+        }
+    }
+    
+    public void deleteBySiteId(int siteId) {
+        lemmaRepository.deleteBySiteId(siteId);
+    }
 }

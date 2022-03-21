@@ -9,8 +9,10 @@ import main.model.Lemma;
 import main.model.Page;
 import main.model.Site;
 import main.searcher.enums.SearchStatus;
-import main.service.impl.SearchServiceImpl;
+import main.service.SearchService;
 import org.jsoup.nodes.Document;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -19,9 +21,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.TreeSet;
 
+@Component
 public class Searcher {
+    
+    private final SearchService searchService;
     
     @Getter
     private SearchStatus status;
@@ -29,27 +33,27 @@ public class Searcher {
     private int count;
     @Getter
     private List<Finding> searchResult;
-    
-    private final SearchServiceImpl searchService;
     private List<Field> fields;
     private List<Lemma> lemmas;
     private List<Index> indexes;
     private List<Page> pages;
     
-    public Searcher(SearchServiceImpl searchService) {
+    
+    @Autowired
+    public Searcher(SearchService searchService) {
         this.searchService = searchService;
     }
+    
     
     public void search(String query, String siteUrl, int offset, int limit) {
         
         status = SearchStatus.READY;
         
-        Site site = siteUrl.equals("") ? null : searchService.getSiteService().getSiteByUrl(siteUrl);
-        
         fields = searchService.getFieldService().getAllFields();
         Lemmatizer lemmatizer = new Lemmatizer(query);
         Set<String> lemmasStr = lemmatizer.getLemmas().keySet();
         
+        Site site = siteUrl.equals("") ? null : searchService.getSiteService().getSiteByUrl(siteUrl);
         lemmas = getLemmas(lemmasStr, site);
         if (lemmas.isEmpty()) {
             status = SearchStatus.WRONG_QUERY;
@@ -75,7 +79,7 @@ public class Searcher {
     
     private List<Lemma> getLemmas(Set<String> lemmasStr, Site site) {
     
-        int thresholdCountPages = (int) (searchService.getPageService().count() * 0.5);
+        int thresholdCountPages = (int) (searchService.getPageService().countBySite(site) * 0.5);
     
         List<Lemma> list = new ArrayList<>();
         List<Lemma> lemmaList = searchService.getLemmaService()
@@ -122,7 +126,7 @@ public class Searcher {
     
     private List<Page> getPages() {
         return indexes.stream()
-                .map(Index::getPage)
+                .map(index -> searchService.getPageService().getPageById(index.getPageId()))
                 .distinct()
                 .toList();
     }
@@ -132,10 +136,11 @@ public class Searcher {
         Map<Page, Float> pagesAbsRelevance = new HashMap<>();
         
         for (Page page : pages) {
-
+            
+            int pageId = page.getId();
             float absRelevance = 0.0f;
             for (Index index : indexes) {
-                if (page.equals(index.getPage())) {
+                if (pageId == index.getPageId()) {
                     absRelevance += index.getRank();
                 }
             }
@@ -170,9 +175,10 @@ public class Searcher {
                 .skip(offset)
                 .map(page -> {
                     Finding finding = new Finding();
-    
-                    finding.setSite(page.getSite().getUrl());
-                    finding.setSiteName(page.getSite().getName());
+                    
+                    Site site = searchService.getSiteService().getSiteById(page.getSiteId());
+                    finding.setSite(site.getUrl());
+                    finding.setSiteName(site.getName());
                     finding.setUri(page.getPath());
                     finding.setTitle(page.getDocument().title());
                     finding.setSnippet(createSnippet(page));

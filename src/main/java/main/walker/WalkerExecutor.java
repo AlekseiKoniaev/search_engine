@@ -1,32 +1,41 @@
 package main.walker;
 
 import main.model.Site;
-import main.service.impl.IndexingServiceImpl;
-import org.springframework.transaction.annotation.Transactional;
+import main.service.IndexingService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.RecursiveAction;
 import java.util.concurrent.RecursiveTask;
 
 import static main.model.enums.Status.INDEXED;
 
-public class WalkerExecutor extends RecursiveTask<Void> {
+@Component
+public class WalkerExecutor extends RecursiveAction {
     
-    private final List<SiteWalker> walkers;
-    private final IndexingServiceImpl indexingService;
+    private final IndexingService indexingService;
     
-    public WalkerExecutor(List<SiteWalker> walkers, IndexingServiceImpl indexingService) {
-        this.walkers = walkers;
+    private List<SiteWalker> walkers;
+    
+    
+    @Autowired
+    public WalkerExecutor(IndexingService indexingService) {
         this.indexingService = indexingService;
     }
     
+    public void init(List<SiteWalker> walkers) {
+        this.walkers = walkers;
+    }
+    
     @Override
-    public Void compute() {
+    public void compute() {
         
-        if (Thread.currentThread().isInterrupted()) {
-            return null;
-        }
+//        if (Thread.currentThread().isInterrupted()) {
+//            return null;
+//        }
         
         List<SiteWalker> walkerList = new ArrayList<>();
         walkers.forEach(walker -> {
@@ -38,7 +47,6 @@ public class WalkerExecutor extends RecursiveTask<Void> {
             switchStatus(walker);
         });
         
-        return null;
     }
     
     public synchronized boolean stopIndexing(ForkJoinPool pool) {
@@ -54,10 +62,9 @@ public class WalkerExecutor extends RecursiveTask<Void> {
         return successful;
     }
     
-    @Transactional
     private boolean switchStatus(SiteWalker walker) {
     
-        Site site = walker.getPage().getSite();
+        Site site = walker.getSite();
         site.setStatus(INDEXED);
         for (int i = 0; i < 10; i++) {
             indexingService.getSiteService().saveSite(site);

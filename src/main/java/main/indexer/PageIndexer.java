@@ -5,7 +5,11 @@ import main.model.Field;
 import main.model.Index;
 import main.model.Lemma;
 import main.model.Page;
-import main.service.impl.IndexingServiceImpl;
+import main.model.Site;
+import main.service.IndexingService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -13,26 +17,32 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Component
+@Scope("prototype")
 public class PageIndexer {
     
-    
-    private final IndexingServiceImpl indexingService;
+    private IndexingService service;
     
     private final Page page;
+    private final Site site;
     private List<Field> fields;
     private Map<String, Map<String, Integer>> lemmas;
     private List<Index> indexes;
     
     
-    public PageIndexer(Page page, IndexingServiceImpl indexingService) {
-        this.indexingService = indexingService;
+    public PageIndexer(Page page, Site site) {
         this.page = page;
-        indexes = new ArrayList<>();
+        this.site = site;
     }
     
     
+    @Autowired
+    public void setService(IndexingService service) {
+        this.service = service;
+    }
+    
     public void index() {
-        fields = indexingService.getFieldService().getAllFields();
+        fields = service.getFieldService().getAllFields();
         lemmas = getLemmasForPage();
         addLemmasToDB();
         indexes = createIndexes();
@@ -63,12 +73,12 @@ public class PageIndexer {
                 .map(lemmaStr -> {
                     Lemma lemma = new Lemma();
                     lemma.setLemma(lemmaStr);
-                    lemma.setSite(page.getSite());
+                    lemma.setSiteId(page.getSiteId());
                     return lemma;
                 })
                 .toList();
-        synchronized (page.getSite()) {
-            indexingService.getLemmaService().saveLemmas(uniqueLemmas);
+        synchronized (page) {
+            service.getLemmaService().saveLemmas(uniqueLemmas);
         }
     }
     
@@ -76,14 +86,17 @@ public class PageIndexer {
     private List<Index> createIndexes() {
         Map<String, Float> rankForLemmas = calculateRankForLemmas();
         List<Index> indexes = new ArrayList<>();
+        Page page = service.getPageService().getPageByPathAndSiteId(
+                this.page.getPath(), site.getId());
+        
         for (String lemmaStr : rankForLemmas.keySet()) {
-            Page page = getPage(this.page.getPath());
-            Lemma lemma = getLemma(lemmaStr);
+            
+            Lemma lemma = service.getLemmaService().getLemmaByLemmaAndSite(lemmaStr, site);
             float rank = rankForLemmas.get(lemmaStr);
             
             Index index = new Index();
-            index.setPage(page);
-            index.setLemma(lemma);
+            index.setPageId(page.getId());
+            index.setLemmaId(lemma.getId());
             index.setRank(rank);
             
             indexes.add(index);
@@ -107,18 +120,10 @@ public class PageIndexer {
         return lemmasWeights;
     }
     
-    private Page getPage(String path) {
-        return indexingService.getPageService().getPageByPath(path);
-    }
-    
-    private Lemma getLemma(String lemma) {
-        return indexingService.getLemmaService().getLemmaByLemma(lemma);
-    }
-    
     
     private void addIndexesToDB() {
-        synchronized (page.getSite()) {
-            indexingService.getIndexService().saveIndexes(indexes);
+        synchronized (page) {
+            service.getIndexService().saveIndexes(indexes);
         }
     }
 }

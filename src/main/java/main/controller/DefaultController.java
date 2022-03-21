@@ -1,6 +1,6 @@
 package main.controller;
 
-import main.config.YAMLConfig;
+import main.config.WebConfig;
 import main.model.Site;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,7 +12,7 @@ import java.util.List;
 public class DefaultController {
 
     @Autowired
-    private YAMLConfig config;
+    private WebConfig config;
 
     @RequestMapping("/admin")
     public List<Site> index() {

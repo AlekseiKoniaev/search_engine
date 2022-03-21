@@ -1,12 +1,238 @@
 package main.service;
 
+import lombok.Getter;
+import main.api.response.ErrorResponse;
 import main.api.response.Response;
 import main.api.response.StatResponse;
+import main.api.response.model.SiteInfo;
+import main.config.WebConfig;
+import main.model.Index;
+import main.model.Lemma;
+import main.model.Page;
+import main.model.Site;
+import main.model.enums.Status;
+import main.walker.SiteWalker;
+import main.walker.WalkerExecutor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.stereotype.Service;
 
-public interface IndexingService {
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ForkJoinPool;
+import java.util.stream.Collectors;
+
+import static main.model.enums.Status.INDEXED;
+import static main.model.enums.Status.INDEXING;
+
+@Service
+public class IndexingService {
     
-    Response startIndexing();
-    Response stopIndexing();
-    Response indexPage(String url);
-    StatResponse statistics();
+    private static final String INDEXING_RUN = "Индексация уже запущена";
+    private static final String INDEXING_NOT_RUN = "Индексация не запущена";
+    private static final String INDEXING_ENDS = "Индексация завершается";
+    private static final String SITE_NOT_FOUND = "Данная страница находится за " +
+            "пределами сайтов, указанных в конфигурационном файле";
+    
+    private final ApplicationContext applicationContext;
+    private final WebConfig config;
+    
+    @Getter
+    private final FieldService fieldService;
+    
+    @Getter
+    private final PageService pageService;
+    
+    @Getter
+    private final LemmaService lemmaService;
+    
+    @Getter
+    private final IndexService indexService;
+    
+    @Getter
+    private final SiteService siteService;
+    
+    private WalkerExecutor walkerExecutor;
+    private ForkJoinPool pool;
+    
+    @Autowired
+    public IndexingService(ApplicationContext applicationContext,
+                           WebConfig config,
+                           FieldService fieldService,
+                           PageService pageService,
+                           LemmaService lemmaService,
+                           IndexService indexService,
+                           SiteService siteService) {
+        this.applicationContext = applicationContext;
+        this.config = config;
+        this.fieldService = fieldService;
+        this.pageService = pageService;
+        this.lemmaService = lemmaService;
+        this.indexService = indexService;
+        this.siteService = siteService;
+    }
+    
+    
+    public Response startIndexing() {
+        
+        List<Site> sites = getAllSites();
+        
+        if (sites.stream().anyMatch(site -> (site.getStatus() == INDEXING))) {
+            return new ErrorResponse(INDEXING_RUN);
+        }
+        
+        List<SiteWalker> walkers = sites.stream().map(this::prepareToIndexing).toList();
+        walkerExecutor = applicationContext.getBean(WalkerExecutor.class);
+        walkerExecutor.init(walkers);
+        pool = new ForkJoinPool();
+        pool.execute(walkerExecutor);
+        
+        return new Response();
+    }
+    
+    public Response stopIndexing() {
+    
+        if (pool.isTerminated()) {
+            return new ErrorResponse(INDEXING_NOT_RUN);
+        } else if (pool.isTerminating()) {
+            return new ErrorResponse(INDEXING_ENDS);
+        }
+        
+        boolean result = walkerExecutor.stopIndexing(pool);
+        
+        return new Response(result);
+    }
+    
+    public Response indexPage(String url) {
+        
+        Site site = getAllSites().stream()
+                .filter(s -> url.startsWith(s.getUrl()))
+                .findFirst()
+                .orElse(null);
+        
+        if (site == null) {
+            return new ErrorResponse(SITE_NOT_FOUND);
+        } else if (site.getStatus() == INDEXING) {
+            return new ErrorResponse(INDEXING_RUN);
+        }
+        
+        String path = url.replaceAll(site.getUrl(), "");
+        path = path.isEmpty() ? "/" : path;
+        
+        Page page = new Page(path);
+        page.setSiteId(site.getId());
+        SiteWalker walker = prepareToIndexing(page, site);
+        walker.indexOnePage();
+        
+        site.setStatus(INDEXED);
+        siteService.saveSite(site);
+    
+        return new Response();
+    }
+    
+    public StatResponse statistics() {
+        List<SiteInfo> detailed = new ArrayList<>();
+        
+        List<Site> sites = siteService.getAllSites();
+        for (Site site : sites) {
+            SiteInfo info = new SiteInfo();
+            
+            info.setUrl(site.getUrl());
+            info.setName(site.getName());
+            info.setStatus(site.getStatus().toString());
+            info.setStatusTime(site.getStatusTime().atZone(ZoneId.systemDefault())
+                    .toInstant().toEpochMilli());
+            info.setError(site.getLastError());
+            info.setPages(pageService.countBySite(site));
+            info.setLemmas(lemmaService.countBySiteId(site.getId()));
+            
+            detailed.add(info);
+        }
+        
+        return new StatResponse(detailed);
+    }
+    
+    
+    private List<Site> getAllSites() {
+        List<Site> collect = new ArrayList<>();
+        
+        List<Site> sites = config.getSites();
+        
+//        collect = sites.stream()
+//                .map(site -> {
+//                    Site currentSite = siteService.getSiteByUrl(site.getUrl());
+//                    if (currentSite == null) {
+//                        siteService.saveSite(site);
+//                        currentSite = siteService.getSiteByUrl(site.getUrl());
+//                    }
+//                    return currentSite;
+//                })
+//                .collect(Collectors.toList());
+        
+        for (Site site : sites) {
+            Site currentSite = siteService.getSiteByUrl(site.getUrl());
+            if (currentSite == null) {
+                site.setStatus(INDEXED);
+                siteService.saveSite(site);
+                currentSite = siteService.getSiteByUrl(site.getUrl());
+            }
+            collect.add(currentSite);
+        }
+        
+        return collect;
+    }
+    
+    private SiteWalker prepareToIndexing(Site site) {
+        
+        if (site.getStatus() == INDEXED) {
+            removeDataForSite(site);
+        }
+    
+        switchStatus(site);
+    
+        return applicationContext.getBean(SiteWalker.class, site);
+    }
+    
+    private SiteWalker prepareToIndexing(Page page, Site site) {
+        
+        if (site.getStatus() == INDEXED) {
+            removeDataForPage(page);
+        }
+    
+        switchStatus(site);
+    
+        return applicationContext.getBean(SiteWalker.class, page, site);
+    }
+    
+    private void removeDataForSite(Site site) {
+        pageService.deleteBySiteId(site.getId());
+        lemmaService.deleteBySiteId(site.getId());
+    }
+    
+    private void removeDataForPage(Page page) {
+        
+        Page foundPage = pageService.getPageByPathAndSiteId(page.getPath(), page.getSiteId());
+        
+        if (foundPage == null) {
+            return;
+        }
+        
+        List<Index> foundIndexes = indexService.findIndexesByPageId(foundPage.getId());
+        List<Lemma> foundLemmas = foundIndexes.stream()
+                .map(index -> lemmaService.getLemmaById(index.getLemmaId()))
+                .distinct()
+                .toList();
+        
+        pageService.deleteByPathAndSiteId(page.getPath(), page.getSiteId());
+        foundLemmas.forEach(lemmaService::decrementAndUpdateLemma);
+    }
+    
+    private void switchStatus(Site site) {
+        synchronized (site) {
+            site.setStatus(INDEXING);
+            siteService.saveSite(site);
+        }
+    }
+    
 }
