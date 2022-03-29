@@ -5,8 +5,8 @@ import main.config.WebConfig;
 import main.indexer.PageIndexer;
 import main.model.Page;
 import main.model.Site;
-import main.model.enums.Status;
-import main.service.IndexingService;
+import main.service.PageService;
+import main.service.SiteService;
 import org.jsoup.Connection;
 import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
@@ -22,64 +22,74 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.RecursiveAction;
-import java.util.concurrent.RecursiveTask;
 
 @Component
 @Scope("prototype")
 public class SiteWalker extends RecursiveAction {
     
-    private ApplicationContext applicationContext;
-    private IndexingService service;
-    private WebConfig config;
+//    Logger logger = LoggerFactory.getLogger(SiteWalker.class);
+    
+    private final ApplicationContext applicationContext;
+    private final WebConfig config;
+    private final PageService pageService;
+    private final SiteService siteService;
+    
+    private Set<String> visitedPages;
+    private WalkerExecutor executor;
     
     @Getter
-    private final Page page;
-    @Getter
-    private final Site site;
-    private final Set<String> visitedPages;
+    private Site site;
+    private Page page;
     
     
-    public SiteWalker(Site site) {
-        this(new Page("/"), site);
+    @Autowired
+    public SiteWalker(ApplicationContext applicationContext,
+                      WebConfig config,
+                      PageService pageService,
+                      SiteService siteService) {
+        this.applicationContext = applicationContext;
+        this.config = config;
+        this.pageService = pageService;
+        this.siteService = siteService;
+    }
+    
+    public void init(Site site) {
+        init(new Page("/"), site);
         page.setSiteId(site.getId());
     }
     
-    public SiteWalker(Page page, Site site) {
-        this(page, site, Collections.synchronizedSet(new HashSet<>()));
+    public void init(Page page, Site site) {
+        init(page, site, Collections.synchronizedSet(new HashSet<>()));
     }
     
-    private SiteWalker(Page page, Site site, Set<String> visitedPages) {
+    private void init(Page page, Site site, Set<String> visitedPages) {
         this.page = page;
         this.site = site;
         this.visitedPages = visitedPages;
     }
     
-    
-    @Autowired
-    public void setApplicationContext(ApplicationContext applicationContext) {
-        this.applicationContext = applicationContext;
-    }
-    
-    @Autowired
-    public void setService(IndexingService service) {
-        this.service = service;
-    }
-    
-    @Autowired
-    public void setConfig(WebConfig config) {
-        this.config = config;
+    void setExecutor(WalkerExecutor executor) {
+        this.executor = executor;
     }
     
     @Override
     protected void compute() {
-    
-        if (Thread.currentThread().isInterrupted()) {
+        
+        if (executor.isDisableCompute()) {
             return;
         }
         
-        if (visitPage()) {
+        boolean pageVisitingIsOk = false;
+        try {
+            pageVisitingIsOk = visitPage();
+        } catch (ServerNotFoundException e) {
+            site.setLastError(e.getMessage());
+            site.updateStatusTime();
+            siteService.saveSite(site);
+        }
+        
+        if (pageVisitingIsOk) {
     
             index();
     
@@ -87,15 +97,19 @@ public class SiteWalker extends RecursiveAction {
             for (String path : getParsedPages()) {
                 Page page = new Page(path);
                 page.setSiteId(site.getId());
-                SiteWalker walker = applicationContext.getBean(SiteWalker.class, page, site, visitedPages);
+                SiteWalker walker = applicationContext.getBean(SiteWalker.class);
+                walker.init(page, site, visitedPages);
                 walkerList.add(walker);
+//                logger.debug("START " + walker.getPage().getPath());
+//                executor.addExecutedWalker(walker);     // debug
+                walker.setExecutor(executor);
+                walker.fork();
             }
             
-            if (walkerList.isEmpty()) {
-                return;
+            for (SiteWalker walker : walkerList) {
+                walker.join();
+//                logger.debug("STOP " + walker.getPage().getPath());
             }
-            
-            invokeAll(walkerList);
         }
     }
     
@@ -106,45 +120,43 @@ public class SiteWalker extends RecursiveAction {
     
     private boolean visitPage() {
         
-        Site site = this.site;
         String path = page.getPath();
         
-        synchronized (this.site) {
-            site = service.getSiteService().getSiteByUrl(site.getUrl());
-            if (visitedPages.contains(path) || site.getStatus() != Status.INDEXING) {
+        synchronized (site) {
+            if (visitedPages.contains(path)) {
                 return false;
             } else {
                 visitedPages.add(path);
                 site.updateStatusTime();
-                service.getSiteService().updateStatusTime(site);
+                siteService.updateStatusTime(site);
             }
         }
         
-        synchronized (page) {
-            try {
-                Connection.Response response = Jsoup.connect(site.getUrl() + path)
-                        .userAgent(config.getUserAgent())
-                        .referrer(config.getReferrer())
-                        .execute();
-                page.setCode(response.statusCode());
-                page.setContent(response.parse().toString());
-            } catch (HttpStatusException e) {
-                page.setCode(e.getStatusCode());
-            } catch (SocketTimeoutException e) {
-                page.setCode(0);
-            } catch (IOException e) {
-                e.printStackTrace();
-                return false;
-            }
-            
-            service.getPageService().savePage(page);
+        try {
+            Connection.Response response = Jsoup.connect(site.getUrl() + path)
+                    .userAgent(config.getUserAgent())
+                    .referrer(config.getReferrer())
+                    .execute();
+            page.setCode(response.statusCode());
+            page.setContent(response.parse().toString());
+        } catch (HttpStatusException e) {
+            page.setCode(e.getStatusCode());
+        } catch (SocketTimeoutException e) {
+            page.setCode(0);
+        } catch (IOException e) {
+            throw new ServerNotFoundException("Server not found with url = " +
+                    site.getUrl() + page.getPath());
         }
+    
+        pageService.savePage(page);
+        
         
         return page.getCode() == 200;
     }
     
     private void index() {
-        PageIndexer indexer = applicationContext.getBean(PageIndexer.class, page, site);
+        PageIndexer indexer = applicationContext.getBean(PageIndexer.class);
+        indexer.init(page, site);
         indexer.index();
     }
     

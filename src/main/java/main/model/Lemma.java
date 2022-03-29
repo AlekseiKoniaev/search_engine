@@ -15,14 +15,6 @@ public class Lemma implements Comparable<Lemma> {
     private Integer siteId;
     
     
-    public void incrementFrequency() {
-        ++frequency;
-    }
-    
-    public void decrementFrequency() {
-        --frequency;
-    }
-    
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

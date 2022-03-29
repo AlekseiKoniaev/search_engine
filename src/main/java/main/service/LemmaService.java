@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 public class LemmaService {
@@ -35,7 +36,7 @@ public class LemmaService {
     
     public List<Lemma> getLemmasByLemmaAndSite(List<String> lemmas, Site site) {
         return lemmas.stream().map(lemma -> getLemmaByLemmaAndSite(lemma, site))
-                        .filter(Objects::nonNull).toList();
+                        .filter(Objects::nonNull).collect(Collectors.toList());
     }
     
     public int countBySiteId(int siteId) {

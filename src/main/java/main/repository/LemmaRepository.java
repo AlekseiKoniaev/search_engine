@@ -3,12 +3,15 @@ package main.repository;
 import main.model.Lemma;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.List;
 
 @Repository
@@ -25,17 +28,30 @@ public class LemmaRepository {
     
     private final JdbcTemplate jdbcTemplate;
     
+    
     @Autowired
     public LemmaRepository(DataSource dataSource) {
         jdbcTemplate = new JdbcTemplate(dataSource);
     }
     
     
-    @Transactional
     public void incrementInsertLemmas(List<Lemma> lemmas) {
-        lemmas.forEach(lemma -> {
-            jdbcTemplate.update("insert into lemma(lemma, frequency, site_id) values (?, 1, ?)" +
-                    "on duplicate key update frequency = frequency + 1", lemma.getLemma(), lemma.getSiteId());
+        String sql = "insert into lemma(lemma, frequency, site_id) values (?, 1, ?)" +
+                "on duplicate key update frequency = frequency + 1";
+        
+        jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
+            
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                Lemma lemma = lemmas.get(i);
+                ps.setString(1, lemma.getLemma());
+                ps.setInt(2, lemma.getSiteId());
+            }
+    
+            @Override
+            public int getBatchSize() {
+                return lemmas.size();
+            }
         });
     }
     
@@ -71,19 +87,16 @@ public class LemmaRepository {
                 Integer.class, siteId);
     }
     
-    @Transactional
     public void decrementAndUpdateLemma(String lemma, int siteId) {
         jdbcTemplate.update("update lemma set frequency = frequency - 1 where lemma = ? and site_id = ?",
                 lemma, siteId);
         
     }
     
-    @Transactional
     public void deleteBySiteId(int siteId) {
         jdbcTemplate.update("delete from lemma where site_id = ?", siteId);
     }
     
-    @Transactional
     public void deleteByLemmaAndSiteId(String lemma, int siteId) {
         jdbcTemplate.update("delete from lemma where lemma = ? and site_id = ?", lemma, siteId);
     }

@@ -1,6 +1,5 @@
 package main.controller;
 
-import lombok.RequiredArgsConstructor;
 import main.api.response.Response;
 import main.service.SearchService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,11 +9,15 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequiredArgsConstructor
 public class SearchController {
     
-    @Autowired
     private final SearchService searchService;
+    
+    
+    @Autowired
+    public SearchController(SearchService searchService) {
+        this.searchService = searchService;
+    }
     
     
     @GetMapping(value = "/search")

@@ -1,7 +1,5 @@
 package main.walker;
 
-import main.model.Page;
-import main.model.Site;
 import org.jsoup.nodes.Document;
 
 import java.util.Set;

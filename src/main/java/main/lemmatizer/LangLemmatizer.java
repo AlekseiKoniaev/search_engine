@@ -59,7 +59,7 @@ public abstract class LangLemmatizer {
     private List<String> getWords(String text) {
         return splitText(clearText(text)).stream()
                 .filter(this::isAllowablePartOfSpeech)
-                .toList();
+                .collect(Collectors.toList());
     }
     
     private List<String> splitText(String text) {

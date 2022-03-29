@@ -18,20 +18,22 @@ public class Site {
     private String lastError;
     private String url;
     private String name;
+    
 
     public Site(String url) {
         this.url = url;
         status = Status.INDEXED;
         statusTime = LocalDateTime.now();
-        lastError = null;   // todo : error processing
+        lastError = null;
     }
     
-    public synchronized void setStatus(Status status) {
+    
+    public void setStatus(Status status) {
         this.status = status;
         updateStatusTime();
     }
     
-    public synchronized void updateStatusTime() {
+    public void updateStatusTime() {
         statusTime = LocalDateTime.now();
     }
 }

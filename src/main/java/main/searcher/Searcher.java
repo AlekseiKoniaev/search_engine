@@ -9,7 +9,12 @@ import main.model.Lemma;
 import main.model.Page;
 import main.model.Site;
 import main.searcher.enums.SearchStatus;
+import main.service.FieldService;
+import main.service.IndexService;
+import main.service.LemmaService;
+import main.service.PageService;
 import main.service.SearchService;
+import main.service.SiteService;
 import org.jsoup.nodes.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -21,11 +26,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 @Component
 public class Searcher {
     
-    private final SearchService searchService;
+    private final FieldService fieldService;
+    private final PageService pageService;
+    private final LemmaService lemmaService;
+    private final IndexService indexService;
+    private final SiteService siteService;
+    
+    private List<Field> fields;
+    private List<Lemma> lemmas;
+    private List<Index> indexes;
+    private List<Page> pages;
     
     @Getter
     private SearchStatus status;
@@ -33,15 +48,19 @@ public class Searcher {
     private int count;
     @Getter
     private List<Finding> searchResult;
-    private List<Field> fields;
-    private List<Lemma> lemmas;
-    private List<Index> indexes;
-    private List<Page> pages;
     
     
     @Autowired
-    public Searcher(SearchService searchService) {
-        this.searchService = searchService;
+    public Searcher(FieldService fieldService,
+                    PageService pageService,
+                    LemmaService lemmaService,
+                    IndexService indexService,
+                    SiteService siteService) {
+        this.fieldService = fieldService;
+        this.pageService = pageService;
+        this.lemmaService = lemmaService;
+        this.indexService = indexService;
+        this.siteService = siteService;
     }
     
     
@@ -49,11 +68,11 @@ public class Searcher {
         
         status = SearchStatus.READY;
         
-        fields = searchService.getFieldService().getAllFields();
+        fields = fieldService.getAllFields();
         Lemmatizer lemmatizer = new Lemmatizer(query);
         Set<String> lemmasStr = lemmatizer.getLemmas().keySet();
         
-        Site site = siteUrl.equals("") ? null : searchService.getSiteService().getSiteByUrl(siteUrl);
+        Site site = siteUrl.equals("") ? null : siteService.getSiteByUrl(siteUrl);
         lemmas = getLemmas(lemmasStr, site);
         if (lemmas.isEmpty()) {
             status = SearchStatus.WRONG_QUERY;
@@ -79,11 +98,10 @@ public class Searcher {
     
     private List<Lemma> getLemmas(Set<String> lemmasStr, Site site) {
     
-        int thresholdCountPages = (int) (searchService.getPageService().countBySite(site) * 0.5);
+        int thresholdCountPages = (int) (pageService.countBySite(site) * 0.5);
     
         List<Lemma> list = new ArrayList<>();
-        List<Lemma> lemmaList = searchService.getLemmaService()
-                .getLemmasByLemmaAndSite(new ArrayList<>(lemmasStr), site);
+        List<Lemma> lemmaList = lemmaService.getLemmasByLemmaAndSite(new ArrayList<>(lemmasStr), site);
         for (Lemma lemma : lemmaList) {
             if (lemma.getFrequency() < thresholdCountPages) {
                 list.add(lemma);
@@ -97,7 +115,7 @@ public class Searcher {
         List<Index> indexes = new ArrayList<>();
         
         for (Lemma lemma : lemmas) {
-            List<Index> foundIndexes = searchService.getIndexService().findIndexesByLemmaId(lemma.getId());
+            List<Index> foundIndexes = indexService.findIndexesByLemmaId(lemma.getId());
             if (indexes.isEmpty()) {
                 indexes.addAll(foundIndexes);
             } else {
@@ -119,16 +137,16 @@ public class Searcher {
         List<Index> list = foundIndexes.stream()
                 .filter(foundIndex -> indexes.stream()
                         .anyMatch(index -> index.getId() == foundIndex.getId()))
-                .toList();
+                .collect(Collectors.toList());
         
         indexes.addAll(list);
     }
     
     private List<Page> getPages() {
         return indexes.stream()
-                .map(index -> searchService.getPageService().getPageById(index.getPageId()))
+                .map(index -> pageService.getPageById(index.getPageId()))
                 .distinct()
-                .toList();
+                .collect(Collectors.toList());
     }
     
     private Map<Page, Float> calculateAbsRelevance() {
@@ -176,7 +194,7 @@ public class Searcher {
                 .map(page -> {
                     Finding finding = new Finding();
                     
-                    Site site = searchService.getSiteService().getSiteById(page.getSiteId());
+                    Site site = siteService.getSiteById(page.getSiteId());
                     finding.setSite(site.getUrl());
                     finding.setSiteName(site.getName());
                     finding.setUri(page.getPath());
@@ -188,7 +206,7 @@ public class Searcher {
                 })
                 .sorted()
                 .limit(limit)
-                .toList();
+                .collect(Collectors.toList());
     }
     
     private String createSnippet(Page page) {

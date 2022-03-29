@@ -1,7 +1,7 @@
 package main.walker;
 
 import main.model.Site;
-import main.service.IndexingService;
+import main.service.SiteService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -9,44 +9,53 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveAction;
-import java.util.concurrent.RecursiveTask;
 
 import static main.model.enums.Status.INDEXED;
 
 @Component
 public class WalkerExecutor extends RecursiveAction {
     
-    private final IndexingService indexingService;
+    private final SiteService siteService;
     
     private List<SiteWalker> walkers;
+    private ForkJoinPool executorPool;
     
     
     @Autowired
-    public WalkerExecutor(IndexingService indexingService) {
-        this.indexingService = indexingService;
+    public WalkerExecutor(SiteService siteService) {
+        this.siteService = siteService;
     }
     
-    public void init(List<SiteWalker> walkers) {
+    
+    public void init(List<SiteWalker> walkers, ForkJoinPool pool) {
         this.walkers = walkers;
+        this.executorPool = pool;
+    }
+    
+    boolean isDisableCompute() {
+        return executorPool.isTerminating() || executorPool.isTerminated();
     }
     
     @Override
     public void compute() {
         
-//        if (Thread.currentThread().isInterrupted()) {
-//            return null;
-//        }
+        if (isDisableCompute()) {
+            return;
+        }
         
         List<SiteWalker> walkerList = new ArrayList<>();
-        walkers.forEach(walker -> {
+        
+        for (SiteWalker walker : walkers) {
+            walker.setExecutor(this);
             walker.fork();
             walkerList.add(walker);
-        });
-        walkerList.forEach(walker -> {
+        }
+        
+        for (SiteWalker walker : walkerList) {
             walker.join();
             switchStatus(walker);
-        });
-        
+        }
+    
     }
     
     public synchronized boolean stopIndexing(ForkJoinPool pool) {
@@ -58,7 +67,7 @@ public class WalkerExecutor extends RecursiveAction {
                 successful = false;
             }
         }
-    
+        
         return successful;
     }
     
@@ -66,12 +75,8 @@ public class WalkerExecutor extends RecursiveAction {
     
         Site site = walker.getSite();
         site.setStatus(INDEXED);
-        for (int i = 0; i < 10; i++) {
-            indexingService.getSiteService().saveSite(site);
-            if (indexingService.getSiteService().getSiteById(site.getId()).getStatus() == INDEXED) {
-                return true;
-            }
-        }
-        return false;
+        
+        siteService.updateStatus(site);
+        return siteService.getSiteById(site.getId()).getStatus() == INDEXED;
     }
 }

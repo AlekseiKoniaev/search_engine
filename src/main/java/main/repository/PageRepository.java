@@ -24,6 +24,7 @@ public class PageRepository {
     
     private final JdbcTemplate jdbcTemplate;
     
+    
     @Autowired
     public PageRepository(DataSource dataSource) {
         jdbcTemplate = new JdbcTemplate(dataSource);

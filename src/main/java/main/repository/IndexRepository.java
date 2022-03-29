@@ -3,12 +3,15 @@ package main.repository;
 import main.model.Index;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
 
@@ -26,17 +29,31 @@ public class IndexRepository {
     
     private final JdbcTemplate jdbcTemplate;
     
+    
     @Autowired
     public IndexRepository(DataSource dataSource) {
         jdbcTemplate = new JdbcTemplate(dataSource);
     }
     
     
-    @Transactional
     public void saveAll(List<Index> indexes) {
-        indexes.forEach(index -> {
-            jdbcTemplate.update("insert into _index(page_id, lemma_id, _rank) values (?, ?, ?)",
-                    index.getPageId(), index.getLemmaId(), index.getRank());
+        
+        String sql = "insert into _index(page_id, lemma_id, _rank) values (?, ?, ?)";
+        
+        jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
+            
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                Index index = indexes.get(i);
+                ps.setInt(1, index.getPageId());
+                ps.setInt(2, index.getLemmaId());
+                ps.setFloat(3, index.getRank());
+            }
+    
+            @Override
+            public int getBatchSize() {
+                return indexes.size();
+            }
         });
     }
     
@@ -56,7 +73,6 @@ public class IndexRepository {
         }
     }
     
-    @Transactional
     public void deleteByPageId(int pageId) {
         jdbcTemplate.update("delete from _index where page_id = ?", pageId);
     }

@@ -1,6 +1,5 @@
 package main.controller;
 
-import lombok.RequiredArgsConstructor;
 import main.api.response.Response;
 import main.api.response.StatResponse;
 import main.service.IndexingService;
@@ -13,11 +12,16 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequiredArgsConstructor
 public class IndexController {
     
-    @Autowired
     private final IndexingService indexingService;
+    
+    
+    @Autowired
+    public IndexController(IndexingService indexingService) {
+        this.indexingService = indexingService;
+    }
+    
     
     @GetMapping("/startIndexing")
     public Response startIndexing() {

@@ -30,12 +30,13 @@ public class SiteRepository {
     
     private final JdbcTemplate jdbcTemplate;
     
+    
     @Autowired
     public SiteRepository(DataSource dataSource) {
         jdbcTemplate = new JdbcTemplate(dataSource);
     }
     
-    @Transactional
+    
     public void save(Site site) {
         
         String status = site.getStatus().toString();
@@ -47,13 +48,11 @@ public class SiteRepository {
                 site.getUrl(), site.getName(), status, statusTime);
     }
     
-    @Transactional
     public void updateStatus(Site site) {
         jdbcTemplate.update("update site set status = ?, status_time = ? where url = ?",
                 site.getStatus().toString(), site.getStatusTime(), site.getUrl());
     }
     
-    @Transactional
     public void updateStatusTime(Site site) {
         jdbcTemplate.update("update site set status_time = ? where url = ?",
                 LocalDateTime.now(), site.getUrl());

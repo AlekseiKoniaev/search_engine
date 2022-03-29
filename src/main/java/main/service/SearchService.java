@@ -1,6 +1,5 @@
 package main.service;
 
-import lombok.Getter;
 import main.api.response.ErrorResponse;
 import main.api.response.Response;
 import main.api.response.SearchResponse;
@@ -20,35 +19,12 @@ public class SearchService {
     
     private final ApplicationContext applicationContext;
     
-    @Getter
-    private final FieldService fieldService;
-    
-    @Getter
-    private final PageService pageService;
-    
-    @Getter
-    private final LemmaService lemmaService;
-    
-    @Getter
-    private final IndexService indexService;
-    
-    @Getter
-    private final SiteService siteService;
     
     @Autowired
-    public SearchService(ApplicationContext applicationContext,
-                         FieldService fieldService,
-                         PageService pageService,
-                         LemmaService lemmaService,
-                         IndexService indexService,
-                         SiteService siteService) {
+    public SearchService(ApplicationContext applicationContext) {
         this.applicationContext = applicationContext;
-        this.fieldService = fieldService;
-        this.pageService = pageService;
-        this.lemmaService = lemmaService;
-        this.indexService = indexService;
-        this.siteService = siteService;
     }
+    
     
     public ResponseEntity<Response> search(String query, String siteUrl, int offset, int limit) {
     

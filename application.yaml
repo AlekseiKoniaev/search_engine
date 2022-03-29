@@ -4,14 +4,23 @@ spring:
         username: search_engine
         password: 9en2w0oc
 
+logging:
+    level:
+        root: "info"
+        main.walker: "debug"
+
+server:
+    servlet:
+        context-path: /admin
+
 app:
     sites:
-#        -   url: http://www.playback.ru
-#            name: PlayBack.ru
+        -   url: http://www.playback.ru
+            name: PlayBack.ru
 #        -   url: https://volochek.life
 #            name: Volochek.life
-        -   url: http://radiomv.ru
-            name: Radiomv.ru
+#        -   url: http://radiomv.ru
+#            name: Radiomv.ru
 #        -   url: https://ipfran.ru
 #            name: Ipfran.ru
 #        -   url: https://dimonvideo.ru
@@ -28,4 +37,3 @@ app:
 #            name: Svetlovka.ru
     user-agent: Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6
     referrer: http://www.google.com
-    web-interface: /admin

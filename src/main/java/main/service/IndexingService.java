@@ -1,6 +1,5 @@
 package main.service;
 
-import lombok.Getter;
 import main.api.response.ErrorResponse;
 import main.api.response.Response;
 import main.api.response.StatResponse;
@@ -10,7 +9,6 @@ import main.model.Index;
 import main.model.Lemma;
 import main.model.Page;
 import main.model.Site;
-import main.model.enums.Status;
 import main.walker.SiteWalker;
 import main.walker.WalkerExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,19 +36,9 @@ public class IndexingService {
     private final ApplicationContext applicationContext;
     private final WebConfig config;
     
-    @Getter
-    private final FieldService fieldService;
-    
-    @Getter
     private final PageService pageService;
-    
-    @Getter
     private final LemmaService lemmaService;
-    
-    @Getter
     private final IndexService indexService;
-    
-    @Getter
     private final SiteService siteService;
     
     private WalkerExecutor walkerExecutor;
@@ -59,14 +47,12 @@ public class IndexingService {
     @Autowired
     public IndexingService(ApplicationContext applicationContext,
                            WebConfig config,
-                           FieldService fieldService,
                            PageService pageService,
                            LemmaService lemmaService,
                            IndexService indexService,
                            SiteService siteService) {
         this.applicationContext = applicationContext;
         this.config = config;
-        this.fieldService = fieldService;
         this.pageService = pageService;
         this.lemmaService = lemmaService;
         this.indexService = indexService;
@@ -82,10 +68,13 @@ public class IndexingService {
             return new ErrorResponse(INDEXING_RUN);
         }
         
-        List<SiteWalker> walkers = sites.stream().map(this::prepareToIndexing).toList();
-        walkerExecutor = applicationContext.getBean(WalkerExecutor.class);
-        walkerExecutor.init(walkers);
+        List<SiteWalker> walkers = sites.stream().map(this::prepareToIndexing).collect(Collectors.toList());
         pool = new ForkJoinPool();
+        
+        walkerExecutor = applicationContext.getBean(WalkerExecutor.class);
+        walkerExecutor.init(walkers, pool);
+        walkerExecutor.reinitialize();
+        
         pool.execute(walkerExecutor);
         
         return new Response();
@@ -126,7 +115,7 @@ public class IndexingService {
         walker.indexOnePage();
         
         site.setStatus(INDEXED);
-        siteService.saveSite(site);
+        siteService.updateStatus(site);
     
         return new Response();
     }
@@ -159,17 +148,6 @@ public class IndexingService {
         
         List<Site> sites = config.getSites();
         
-//        collect = sites.stream()
-//                .map(site -> {
-//                    Site currentSite = siteService.getSiteByUrl(site.getUrl());
-//                    if (currentSite == null) {
-//                        siteService.saveSite(site);
-//                        currentSite = siteService.getSiteByUrl(site.getUrl());
-//                    }
-//                    return currentSite;
-//                })
-//                .collect(Collectors.toList());
-        
         for (Site site : sites) {
             Site currentSite = siteService.getSiteByUrl(site.getUrl());
             if (currentSite == null) {
@@ -191,7 +169,10 @@ public class IndexingService {
     
         switchStatus(site);
     
-        return applicationContext.getBean(SiteWalker.class, site);
+        SiteWalker walker = applicationContext.getBean(SiteWalker.class);
+        walker.init(site);
+        
+        return walker;
     }
     
     private SiteWalker prepareToIndexing(Page page, Site site) {
@@ -202,7 +183,10 @@ public class IndexingService {
     
         switchStatus(site);
     
-        return applicationContext.getBean(SiteWalker.class, page, site);
+        SiteWalker walker = applicationContext.getBean(SiteWalker.class);
+        walker.init(page, site);
+    
+        return walker;
     }
     
     private void removeDataForSite(Site site) {
@@ -222,7 +206,7 @@ public class IndexingService {
         List<Lemma> foundLemmas = foundIndexes.stream()
                 .map(index -> lemmaService.getLemmaById(index.getLemmaId()))
                 .distinct()
-                .toList();
+                .collect(Collectors.toList());
         
         pageService.deleteByPathAndSiteId(page.getPath(), page.getSiteId());
         foundLemmas.forEach(lemmaService::decrementAndUpdateLemma);
@@ -231,7 +215,7 @@ public class IndexingService {
     private void switchStatus(Site site) {
         synchronized (site) {
             site.setStatus(INDEXING);
-            siteService.saveSite(site);
+            siteService.updateStatus(site);
         }
     }
     

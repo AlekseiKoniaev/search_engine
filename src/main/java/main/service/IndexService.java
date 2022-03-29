@@ -30,10 +30,6 @@ public class IndexService {
         return indexRepository.findByLemmaId(lemmaId);
     }
     
-//    public void deleteByPages(List<Page> pages) {
-//        pages.forEach(this::deleteByPage);
-//    }
-    
     public void deleteByPage(Page page) {
         indexRepository.deleteByPageId(page.getId());
     }

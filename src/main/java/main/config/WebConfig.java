@@ -19,6 +19,4 @@ public class WebConfig {
     private List<Site> sites;
     private String userAgent;
     private String referrer;
-    private String webInterface;
-    
 }

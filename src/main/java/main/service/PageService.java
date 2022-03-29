@@ -23,21 +23,9 @@ public class PageService {
         return pageRepository.findById(id);
     }
     
-//    public Page getPageByPath(String path) {
-//        return pageRepository.findByPath(path);
-//    }
-    
     public Page getPageByPathAndSiteId(String path, int siteId) {
         return pageRepository.findByPathAndSiteId(path, siteId);
     }
-    
-//    public List<Page> getPagesBySiteId(int siteId) {
-//        return pageRepository.findBySiteId(siteId);
-//    }
-    
-//    public int count() {
-//        return (int) pageRepository.count();
-//    }
     
     public int countBySite(Site site) {
         return site == null ? pageRepository.count() : pageRepository.countBySiteId(site.getId());
