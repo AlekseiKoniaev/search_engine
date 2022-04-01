@@ -6,8 +6,6 @@ import main.repository.LemmaRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 @Service
 public class LemmaService {
@@ -28,15 +26,10 @@ public class LemmaService {
         return lemmaRepository.findById(id);
     }
     
-    public Lemma getLemmaByLemmaAndSite(String lemma, Site site) {
+    public List<Lemma> getLemmasByLemmasAndSite(List<String> lemmas, Site site) {
         return site == null ?
-                lemmaRepository.findByLemma(lemma) :
-                lemmaRepository.findByLemmaAndSiteId(lemma, site.getId());
-    }
-    
-    public List<Lemma> getLemmasByLemmaAndSite(List<String> lemmas, Site site) {
-        return lemmas.stream().map(lemma -> getLemmaByLemmaAndSite(lemma, site))
-                        .filter(Objects::nonNull).collect(Collectors.toList());
+                lemmaRepository.findByLemmas(lemmas) :
+                lemmaRepository.findByLemmasAndSiteId(lemmas, site.getId());
     }
     
     public int countBySiteId(int siteId) {
@@ -45,7 +38,7 @@ public class LemmaService {
     
     public void decrementAndUpdateLemma(Lemma lemma) {
         
-        Lemma foundLemma = lemmaRepository.findByLemma(lemma.getLemma());
+        Lemma foundLemma = lemmaRepository.findByLemmaAndSiteId(lemma.getLemma(), lemma.getSiteId());
         
         if (foundLemma == null) {
             return;

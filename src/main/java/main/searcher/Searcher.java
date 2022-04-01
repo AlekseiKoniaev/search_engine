@@ -13,7 +13,6 @@ import main.service.FieldService;
 import main.service.IndexService;
 import main.service.LemmaService;
 import main.service.PageService;
-import main.service.SearchService;
 import main.service.SiteService;
 import org.jsoup.nodes.Document;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,12 +30,17 @@ import java.util.stream.Collectors;
 @Component
 public class Searcher {
     
+    private static final float THRESHOLD = 0.5f;
+    
     private final FieldService fieldService;
     private final PageService pageService;
     private final LemmaService lemmaService;
     private final IndexService indexService;
     private final SiteService siteService;
     
+    private String query;
+    private Site site;
+    private Map<Page, Float> pagesRelRelevance;
     private List<Field> fields;
     private List<Lemma> lemmas;
     private List<Index> indexes;
@@ -68,27 +72,46 @@ public class Searcher {
         
         status = SearchStatus.READY;
         
-        fields = fieldService.getAllFields();
-        Lemmatizer lemmatizer = new Lemmatizer(query);
-        Set<String> lemmasStr = lemmatizer.getLemmas().keySet();
+        boolean isNewQuery = this.query == null || !this.query.equals(query);
+        boolean isOtherSiteUrl = (site != null && !site.getUrl().equals(siteUrl)) ||
+                (site == null && !siteUrl.equals(""));
+        boolean isNewSearch = isNewQuery || isOtherSiteUrl;
         
-        Site site = siteUrl.equals("") ? null : siteService.getSiteByUrl(siteUrl);
-        lemmas = getLemmas(lemmasStr, site);
-        if (lemmas.isEmpty()) {
-            status = SearchStatus.WRONG_QUERY;
-            return;
-        }
-        
-        indexes = findIndexes();
-        if (indexes.isEmpty()) {
-            status = SearchStatus.NOT_FOUND;
-            return;
-        }
-        
-        pages = getPages();
+        if (isNewSearch) {
+            
+            this.query = query;
+            fields = fieldService.getAllFields();
+            Lemmatizer lemmatizer = new Lemmatizer(query);
+            Set<String> lemmasStr = lemmatizer.getLemmas().keySet();
     
-        Map<Page, Float> pagesAbsRelevance = calculateAbsRelevance();
-        Map<Page, Float> pagesRelRelevance = calculateRelRelevance(pagesAbsRelevance);
+            List<Site> sites;
+            site = null;
+            if (siteUrl.equals("")) {
+                sites = siteService.getAllSites();
+            } else {
+                sites = new ArrayList<>();
+                site = siteService.getSiteByUrl(siteUrl);
+                sites.add(site);
+            }
+    
+            lemmas = getLemmas(lemmasStr, site);
+            if (lemmas.isEmpty()) {
+                status = SearchStatus.WRONG_QUERY;
+                return;
+            }
+    
+            indexes = new ArrayList<>();
+            sites.forEach(s -> indexes.addAll(findIndexes(s)));
+            if (indexes.isEmpty()) {
+                status = SearchStatus.NOT_FOUND;
+                return;
+            }
+    
+            pages = getPages();
+    
+            Map<Page, Float> pagesAbsRelevance = calculateAbsRelevance();
+            pagesRelRelevance = calculateRelRelevance(pagesAbsRelevance);
+        }
     
         searchResult = createFindings(pagesRelRelevance, offset, limit);
         
@@ -98,10 +121,10 @@ public class Searcher {
     
     private List<Lemma> getLemmas(Set<String> lemmasStr, Site site) {
     
-        int thresholdCountPages = (int) (pageService.countBySite(site) * 0.5);
+        int thresholdCountPages = (int) (pageService.countBySite(site) * THRESHOLD);
     
         List<Lemma> list = new ArrayList<>();
-        List<Lemma> lemmaList = lemmaService.getLemmasByLemmaAndSite(new ArrayList<>(lemmasStr), site);
+        List<Lemma> lemmaList = lemmaService.getLemmasByLemmasAndSite(new ArrayList<>(lemmasStr), site);
         for (Lemma lemma : lemmaList) {
             if (lemma.getFrequency() < thresholdCountPages) {
                 list.add(lemma);
@@ -110,36 +133,40 @@ public class Searcher {
         return list;
     }
     
-    private List<Index> findIndexes() {
-        
-        List<Index> indexes = new ArrayList<>();
+    
+    private List<Index> findIndexes(Site site) {
+        Map<Integer, List<Index>> groupedIndexes = new HashMap<>();
         
         for (Lemma lemma : lemmas) {
+            if (site.getId() != lemma.getSiteId()) {
+                continue;
+            }
             List<Index> foundIndexes = indexService.findIndexesByLemmaId(lemma.getId());
-            if (indexes.isEmpty()) {
-                indexes.addAll(foundIndexes);
+            Map<Integer, List<Index>> groupedFoundIndexes = foundIndexes.stream()
+                    .collect(Collectors.groupingBy(Index::getPageId));
+            if (groupedIndexes.isEmpty()) {
+                groupedIndexes.putAll(groupedFoundIndexes);
             } else {
-                removeForNoneMatchPages(indexes, foundIndexes);
-                addForIdenticalPages(indexes, foundIndexes);
+                mergeIndexes(groupedIndexes,groupedFoundIndexes);
             }
         }
-        
-        return indexes;
-    }
     
-    private void removeForNoneMatchPages(List<Index> indexes, List<Index> foundIndexes) {
-        indexes.removeIf(index -> foundIndexes.stream()
-                .noneMatch(foundIndex -> foundIndex.getId() == index.getId()));
-    }
-    
-    private void addForIdenticalPages(List<Index> indexes, List<Index> foundIndexes) {
-        
-        List<Index> list = foundIndexes.stream()
-                .filter(foundIndex -> indexes.stream()
-                        .anyMatch(index -> index.getId() == foundIndex.getId()))
+        return groupedIndexes.keySet().stream()
+                .flatMap(pageId -> groupedIndexes.get(pageId).stream())
                 .collect(Collectors.toList());
+    }
+    
+    private void mergeIndexes(Map<Integer, List<Index>> groupedIndexes, 
+                              Map<Integer, List<Index>> groupedFoundIndexes) {
         
-        indexes.addAll(list);
+        List<Integer> pageIdList = new ArrayList<>(groupedIndexes.keySet());
+        for (Integer pageId : pageIdList) {
+            if (groupedFoundIndexes.containsKey(pageId)) {
+                groupedIndexes.get(pageId).addAll(groupedFoundIndexes.get(pageId));
+            } else {
+                groupedIndexes.remove(pageId);
+            }
+        }
     }
     
     private List<Page> getPages() {
@@ -229,10 +256,15 @@ public class Searcher {
         StringBuilder fragment = new StringBuilder(text);
         Map<Integer, Integer> matchIndexMap = getMatchIndexMap(text);
         
+        int count = 0;
         for (Integer begin : matchIndexMap.keySet()) {
+            if (count > 10) {
+                break;
+            }
             Integer end = matchIndexMap.get(begin);
             fragment.insert(end, "</b>");
             fragment.insert(begin, "<b>");
+            count++;
         }
         
         optimiseLength(fragment);

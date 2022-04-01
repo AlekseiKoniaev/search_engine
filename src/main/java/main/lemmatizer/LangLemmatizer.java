@@ -50,10 +50,10 @@ public abstract class LangLemmatizer {
         return initialForms;
     }
     
-    private Set<String> getLemmas() {
+    private List<String> getLemmas() {
         return getWords(text).stream()
                 .map(this::getNormalForm)
-                .collect(Collectors.toSet());
+                .collect(Collectors.toList());
     }
     
     private List<String> getWords(String text) {

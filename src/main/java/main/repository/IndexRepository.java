@@ -38,23 +38,17 @@ public class IndexRepository {
     
     public void saveAll(List<Index> indexes) {
         
-        String sql = "insert into _index(page_id, lemma_id, _rank) values (?, ?, ?)";
+        StringBuffer sql = new StringBuffer("insert into _index(page_id, lemma_id, _rank) values ");
+        indexes.forEach(index -> sql.append("(")
+                .append(index.getPageId())
+                .append(",")
+                .append(index.getLemmaId())
+                .append(",")
+                .append(index.getRank())
+                .append("),"));
+        sql.deleteCharAt(sql.length() - 1);
         
-        jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
-            
-            @Override
-            public void setValues(PreparedStatement ps, int i) throws SQLException {
-                Index index = indexes.get(i);
-                ps.setInt(1, index.getPageId());
-                ps.setInt(2, index.getLemmaId());
-                ps.setFloat(3, index.getRank());
-            }
-    
-            @Override
-            public int getBatchSize() {
-                return indexes.size();
-            }
-        });
+        jdbcTemplate.update(sql.toString());
     }
     
     public List<Index> findByPageId(int pageId) {

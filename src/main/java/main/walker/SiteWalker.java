@@ -28,7 +28,7 @@ import java.util.concurrent.RecursiveAction;
 @Scope("prototype")
 public class SiteWalker extends RecursiveAction {
     
-//    Logger logger = LoggerFactory.getLogger(SiteWalker.class);
+    public static final int PAGES_VISIT_LIMIT = 1500;
     
     private final ApplicationContext applicationContext;
     private final WebConfig config;
@@ -76,7 +76,7 @@ public class SiteWalker extends RecursiveAction {
     @Override
     protected void compute() {
         
-        if (executor.isDisableCompute()) {
+        if (executor.isDisableCompute() || visitedPages.size() > PAGES_VISIT_LIMIT) {
             return;
         }
         
@@ -100,15 +100,12 @@ public class SiteWalker extends RecursiveAction {
                 SiteWalker walker = applicationContext.getBean(SiteWalker.class);
                 walker.init(page, site, visitedPages);
                 walkerList.add(walker);
-//                logger.debug("START " + walker.getPage().getPath());
-//                executor.addExecutedWalker(walker);     // debug
                 walker.setExecutor(executor);
                 walker.fork();
             }
             
             for (SiteWalker walker : walkerList) {
                 walker.join();
-//                logger.debug("STOP " + walker.getPage().getPath());
             }
         }
     }

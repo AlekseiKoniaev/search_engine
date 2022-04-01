@@ -3,15 +3,13 @@ package main.repository;
 import main.model.Lemma;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Repository
@@ -36,38 +34,22 @@ public class LemmaRepository {
     
     
     public void incrementInsertLemmas(List<Lemma> lemmas) {
-        String sql = "insert into lemma(lemma, frequency, site_id) values (?, 1, ?)" +
-                "on duplicate key update frequency = frequency + 1";
         
-        jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
-            
-            @Override
-            public void setValues(PreparedStatement ps, int i) throws SQLException {
-                Lemma lemma = lemmas.get(i);
-                ps.setString(1, lemma.getLemma());
-                ps.setInt(2, lemma.getSiteId());
-            }
-    
-            @Override
-            public int getBatchSize() {
-                return lemmas.size();
-            }
-        });
+        StringBuffer sql = new StringBuffer("insert into lemma(lemma, frequency, site_id) values ");
+        lemmas.forEach(lemma -> sql.append("('")
+                .append(lemma.getLemma())
+                .append("',1,")
+                .append(lemma.getSiteId())
+                .append("),"));
+        sql.deleteCharAt(sql.length() - 1);
+        sql.append(" on duplicate key update frequency = frequency + 1");
+        
+        jdbcTemplate.update(sql.toString());
     }
     
     public Lemma findById(int lemmaId) {
         try {
             return jdbcTemplate.queryForObject("select * from lemma where id = ?", rowMapper, lemmaId);
-        } catch (EmptyResultDataAccessException e) {
-            return null;
-        }
-    }
-    
-    // TODO : change to List<Lemma>
-    public Lemma findByLemma(String lemma) {
-        try {
-            return jdbcTemplate.queryForObject("select * from lemma where lemma = ?",
-                    rowMapper, lemma);
         } catch (EmptyResultDataAccessException e) {
             return null;
         }
@@ -79,6 +61,30 @@ public class LemmaRepository {
                     rowMapper, lemma, siteId);
         } catch (EmptyResultDataAccessException e) {
             return null;
+        }
+    }
+    
+    public List<Lemma> findByLemmas(List<String> lemmas) {
+    
+        String insert = String.join(",", Collections.nCopies(lemmas.size(), "?"));
+        String sql = String.format("select * from lemma where lemma in (%s)", insert);
+        
+        try {
+            return jdbcTemplate.query(sql, rowMapper, lemmas.toArray());
+        } catch (EmptyResultDataAccessException e) {
+            return new ArrayList<>();
+        }
+    }
+    
+    public List<Lemma> findByLemmasAndSiteId(List<String> lemmas, int siteId) {
+        
+        String insert = String.join(",", Collections.nCopies(lemmas.size(), "?"));
+        String sql = String.format("select * from lemma where site_id = %d and lemma in (%s)", siteId, insert);
+        
+        try {
+            return jdbcTemplate.query(sql, rowMapper, lemmas.toArray());
+        } catch (EmptyResultDataAccessException e) {
+            return new ArrayList<>();
         }
     }
     
