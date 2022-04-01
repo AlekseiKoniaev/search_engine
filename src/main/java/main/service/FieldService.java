@@ -16,9 +16,6 @@ public class FieldService {
         this.fieldRepository = fieldRepository;
     }
     
-//    public void insertFields(List<Field> fields) {
-//        fieldRepository.saveAll(fields);
-//    }
     
     public List<Field> getAllFields() {
         Iterable<Field> fieldIterable = fieldRepository.findAll();

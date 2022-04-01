@@ -67,8 +67,4 @@ public class IndexRepository {
         }
     }
     
-    public void deleteByPageId(int pageId) {
-        jdbcTemplate.update("delete from _index where page_id = ?", pageId);
-    }
-    
 }

@@ -29,8 +29,4 @@ public class IndexService {
     public List<Index> findIndexesByLemmaId(int lemmaId) {
         return indexRepository.findByLemmaId(lemmaId);
     }
-    
-    public void deleteByPage(Page page) {
-        indexRepository.deleteByPageId(page.getId());
-    }
 }
