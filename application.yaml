@@ -4,11 +4,12 @@ spring:
 #        username: search_engine
 #        password: 9en2w0oc
     datasource:
-        url: jdbc:mysql://alexey16.beget.tech:3306/alexey16_search?useSSL=false
+        url: jdbc:mysql://alexey16.beget.tech/alexey16_search?useSSL=false
         username: alexey16_search
         password: mVdu&2h4
 
 server:
+    port: ${PORT:3306}
     servlet:
         context-path: /admin
 
