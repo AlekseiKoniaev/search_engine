@@ -20,7 +20,7 @@
         <repository>
             <id>project.local</id>
             <name>project</name>
-            <url>file:${project.basedir}\libs</url>
+            <url>file://${project.basedir}/libs</url>
         </repository>
     </repositories>
 
@@ -44,10 +44,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>org.flywaydb</groupId>-->
-<!--            <artifactId>flyway-core</artifactId>-->
-<!--        </dependency>-->
         <dependency>
             <groupId>org.liquibase</groupId>
             <artifactId>liquibase-core</artifactId>
@@ -73,6 +69,7 @@
             <artifactId>junit</artifactId>
             <version>4.13.2</version>
         </dependency>
+
         <dependency>
             <groupId>org.apache.lucene.morphology</groupId>
             <artifactId>dictionary-reader</artifactId>
@@ -88,13 +85,6 @@
             <systemPath>${basedir}/libs/morph-1.5.jar</systemPath>
         </dependency>
         <dependency>
-            <groupId>org.apache.lucene.analysis</groupId>
-            <artifactId>morphology</artifactId>
-            <version>1.5</version>
-            <scope>system</scope>
-            <systemPath>${basedir}/libs/morphology-1.5.jar</systemPath>
-        </dependency>
-        <dependency>
             <groupId>org.apache.lucene.morphology</groupId>
             <artifactId>english</artifactId>
             <version>1.5</version>
@@ -108,7 +98,13 @@
             <scope>system</scope>
             <systemPath>${basedir}/libs/russian-1.5.jar</systemPath>
         </dependency>
-
+        <dependency>
+            <groupId>org.apache.lucene.morphology</groupId>
+            <artifactId>morphology-analysis</artifactId>
+            <version>1.5</version>
+            <scope>system</scope>
+            <systemPath>${basedir}/libs/morphology-analysis-1.5.jar</systemPath>
+        </dependency>
     </dependencies>
 
     <build>
