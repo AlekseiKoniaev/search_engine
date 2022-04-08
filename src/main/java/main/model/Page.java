@@ -22,6 +22,10 @@ public class Page {
         this.path = path;
     }
     
+    public void setContent(String content) {
+        this.content = content == null ? "" : content.replaceAll("\\s*\\n\\s*", "");
+    }
+    
     public Document getDocument() {
         return Jsoup.parse(content);
     }

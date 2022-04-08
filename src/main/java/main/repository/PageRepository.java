@@ -8,6 +8,8 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
+import java.util.Collections;
+import java.util.List;
 
 @Repository
 public class PageRepository {
@@ -50,6 +52,14 @@ public class PageRepository {
                     rowMapper, path, siteId);
         } catch (EmptyResultDataAccessException e) {
             return null;
+        }
+    }
+    
+    public List<Page> findBySiteId(int siteId) {
+        try {
+            return jdbcTemplate.query("select * from page where site_id = ?", rowMapper, siteId);
+        } catch (EmptyResultDataAccessException e) {
+            return Collections.emptyList();
         }
     }
     

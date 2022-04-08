@@ -5,6 +5,8 @@ import main.model.Site;
 import main.repository.PageRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class PageService {
     
@@ -25,6 +27,10 @@ public class PageService {
     
     public Page getPageByPathAndSiteId(String path, int siteId) {
         return pageRepository.findByPathAndSiteId(path, siteId);
+    }
+    
+    public List<Page> getPageBySiteId(int siteId) {
+        return pageRepository.findBySiteId(siteId);
     }
     
     public int countBySite(Site site) {

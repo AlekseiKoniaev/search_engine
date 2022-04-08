@@ -28,7 +28,7 @@ import java.util.concurrent.RecursiveAction;
 @Scope("prototype")
 public class SiteWalker extends RecursiveAction {
     
-    public static final int PAGES_VISIT_LIMIT = 1500;
+    public static final int PAGES_VISIT_LIMIT = 500;
     
     private final ApplicationContext applicationContext;
     private final WebConfig config;
