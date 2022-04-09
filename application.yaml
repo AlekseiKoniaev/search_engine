@@ -4,10 +4,6 @@ spring:
         username: alexey16_search
         password: mVdu&2h4
 
-server:
-    servlet:
-        context-path: /admin
-
 app:
     sites:
         -   url: http://www.playback.ru
@@ -34,3 +30,7 @@ app:
     user-agent: Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6
     referrer: http://www.google.com
     backend-uri: http://koniaev-search-engine.herokuapp.com
+
+server:
+    servlet:
+        context-path: /admin

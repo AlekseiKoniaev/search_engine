@@ -21,7 +21,8 @@ Maven, Spring Boot, MySQL, jdbcTemplate, flyway
     1. Access data to database MySQL: host, login, password;
     2. List of sites to be indexed. This should be an array of objects containing the site's address and name. All website URLs must be complete and must not contain a slash at the end;
     3. User-Agent;
-    4. Web-interface path (default `/admin`).
+    4. Hosting address;
+    5. Web-interface path (default `/admin`).
 
 ### API
 
