@@ -106,16 +106,18 @@ public class IndexingService {
             return new ErrorResponse(INDEXING_RUN);
         }
         
-        String path = url.replaceAll(site.getUrl(), "");
-        path = path.isEmpty() ? "/" : path;
-        
-        Page page = new Page(path);
-        page.setSiteId(site.getId());
-        SiteWalker walker = prepareToIndexing(page, site);
-        walker.indexOnePage();
-        
-        site.setStatus(INDEXED);
-        siteService.updateStatus(site);
+        ForkJoinPool.commonPool().execute(() -> {
+            String path = url.replaceAll(site.getUrl(), "");
+            path = path.isEmpty() ? "/" : path;
+    
+            Page page = new Page(path);
+            page.setSiteId(site.getId());
+            SiteWalker walker = prepareToIndexing(page, site);
+            walker.indexOnePage();
+    
+            site.setStatus(INDEXED);
+            siteService.updateStatus(site);
+        });
     
         return new Response();
     }
