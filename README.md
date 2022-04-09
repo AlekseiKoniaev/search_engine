@@ -38,5 +38,5 @@ Maven, Spring Boot, MySQL, jdbcTemplate, flyway
         - *offset* — offset 0 for paging (default 0);
         - *limit* — number of results to display (default 20).
 
-###Demo 
+### Demo 
 Demo version of the project is available [here](http://koniaev-search-engine.herokuapp.com/admin/)
