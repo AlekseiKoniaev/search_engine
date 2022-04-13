@@ -98,8 +98,8 @@ public class PageIndexer {
         List<Index> indexes = new ArrayList<>();
         Page page = pageService.getPageByPathAndSiteId(
                 this.page.getPath(), site.getId());
-        List<Lemma> foundLemmas = lemmaService.getLemmasByLemmasAndSite(
-                new ArrayList<>(rankForLemmas.keySet()), site);
+        List<Lemma> foundLemmas = lemmaService.getLemmasByLemmasAndSiteId(
+                new ArrayList<>(rankForLemmas.keySet()), site.getId());
         
         for (Lemma lemma : foundLemmas) {
             

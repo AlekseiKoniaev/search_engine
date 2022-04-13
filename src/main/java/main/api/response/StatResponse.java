@@ -15,6 +15,4 @@ public class StatResponse extends Response {
         super(true);
         statistics = new Statistics(detailed);
     }
-    
-    
 }

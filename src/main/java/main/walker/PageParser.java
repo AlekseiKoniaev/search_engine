@@ -15,7 +15,7 @@ public class PageParser {
         this.document = document;
     }
     
-    public Set<String> parseLink() {
+    public Set<String> parseLinks() {
         final String LINK_REGEX = "(" + siteUrl + ")?/[\\w/]+(\\.html|\\.php)?$";
         return document.select("a[href]")
                 .stream()

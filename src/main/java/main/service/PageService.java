@@ -25,6 +25,10 @@ public class PageService {
         return pageRepository.findById(id);
     }
     
+    public List<Page> getPagesByIds(List<Integer> ids) {
+        return pageRepository.findByIds(ids);
+    }
+    
     public Page getPageByPathAndSiteId(String path, int siteId) {
         return pageRepository.findByPathAndSiteId(path, siteId);
     }
@@ -33,8 +37,8 @@ public class PageService {
         return pageRepository.findBySiteId(siteId);
     }
     
-    public int countBySite(Site site) {
-        return site == null ? pageRepository.count() : pageRepository.countBySiteId(site.getId());
+    public int countBySiteId(int siteId) {
+        return pageRepository.countBySiteId(siteId);
     }
     
     public void deleteBySiteId(int siteId) {

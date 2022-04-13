@@ -63,7 +63,7 @@ public abstract class LangLemmatizer {
     }
     
     private List<String> splitText(String text) {
-        return text.isEmpty() ? new ArrayList<>() : List.of(text.split(" "));
+        return text.isEmpty() ? new ArrayList<>() : Arrays.asList(text.split(" "));
     }
     
     private boolean isAllowablePartOfSpeech(String word) {

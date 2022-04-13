@@ -159,7 +159,7 @@ public class SiteWalker extends RecursiveAction {
     
     private Set<String> getParsedPages() {
         PageParser parser = new PageParser(page.getDocument(), site.getUrl());
-        Set<String> parsedPages = parser.parseLink();
+        Set<String> parsedPages = parser.parseLinks();
         parsedPages.removeIf(visitedPages::contains);
         return parsedPages;
     }

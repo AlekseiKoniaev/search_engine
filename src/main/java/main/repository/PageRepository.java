@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -43,6 +44,17 @@ public class PageRepository {
             return jdbcTemplate.queryForObject("select * from page where id = ?", rowMapper, pageId);
         } catch (EmptyResultDataAccessException e) {
             return null;
+        }
+    }
+    
+    public List<Page> findByIds(List<Integer> ids) {
+        String insert = String.join(",", Collections.nCopies(ids.size(), "?"));
+        String sql = String.format("select * from page where id in (%s)", insert);
+    
+        try {
+            return jdbcTemplate.query(sql, rowMapper, ids.toArray());
+        } catch (EmptyResultDataAccessException e) {
+            return new ArrayList<>();
         }
     }
     

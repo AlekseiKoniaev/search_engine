@@ -26,10 +26,12 @@ public class LemmaService {
         return lemmaRepository.findById(id);
     }
     
-    public List<Lemma> getLemmasByLemmasAndSite(List<String> lemmas, Site site) {
-        return site == null ?
-                lemmaRepository.findByLemmas(lemmas) :
-                lemmaRepository.findByLemmasAndSiteId(lemmas, site.getId());
+    public List<Lemma> getLemmasByLemma(List<String> lemmas) {
+        return lemmaRepository.findByLemmas(lemmas);
+    }
+
+    public List<Lemma> getLemmasByLemmasAndSiteId(List<String> lemmas, int siteId) {
+        return lemmaRepository.findByLemmasAndSiteId(lemmas, siteId);
     }
     
     public int countBySiteId(int siteId) {

@@ -135,7 +135,7 @@ public class IndexingService {
             info.setStatusTime(site.getStatusTime().atZone(ZoneId.systemDefault())
                     .toInstant().toEpochMilli());
             info.setError(site.getLastError());
-            info.setPages(pageService.countBySite(site));
+            info.setPages(pageService.countBySiteId(site.getId()));
             info.setLemmas(lemmaService.countBySiteId(site.getId()));
             
             detailed.add(info);

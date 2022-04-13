@@ -1,9 +1,10 @@
 package main.service;
 
+import main.api.request.model.SearchQuery;
 import main.api.response.ErrorResponse;
 import main.api.response.Response;
 import main.api.response.SearchResponse;
-import main.searcher.Searcher;
+import main.searcher.SearchQueryHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpStatus;
@@ -28,15 +29,18 @@ public class SearchService {
     
     public ResponseEntity<Response> search(String query, String siteUrl, int offset, int limit) {
     
-        Searcher searcher = applicationContext.getBean(Searcher.class);
-        searcher.search(query, siteUrl, offset, limit);
+        SearchQuery searchQuery = new SearchQuery(query, siteUrl, offset, limit);
+        SearchQueryHandler searchQueryHandler = applicationContext.getBean(SearchQueryHandler.class);
+        searchQueryHandler.search(searchQuery);
         
-        return getResponse(searcher);
+        return getResponse(searchQueryHandler);
     }
     
-    private ResponseEntity<Response> getResponse(Searcher searcher) {
-        return switch (searcher.getStatus()) {
-            case OK -> new ResponseEntity<>(new SearchResponse(searcher), HttpStatus.OK);
+    private ResponseEntity<Response> getResponse(SearchQueryHandler queryHandler) {
+        return switch (queryHandler.getStatus()) {
+            case OK -> new ResponseEntity<>(
+                    new SearchResponse(queryHandler.getCount(), queryHandler.getFindings()),
+                    HttpStatus.OK);
             case NOT_FOUND -> new ResponseEntity<>(new ErrorResponse(NOT_FOUND), HttpStatus.NOT_FOUND);
             case WRONG_QUERY -> new ResponseEntity<>(new ErrorResponse(WRONG_QUERY), HttpStatus.NOT_FOUND);
             case READY -> new ResponseEntity<>(new ErrorResponse(SERVER_ERROR), HttpStatus.INTERNAL_SERVER_ERROR);
