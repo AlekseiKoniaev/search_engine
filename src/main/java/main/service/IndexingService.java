@@ -31,7 +31,7 @@ public class IndexingService {
     private static final String INDEXING_NOT_RUN = "Индексация не запущена";
     private static final String INDEXING_ENDS = "Индексация завершается";
     private static final String SITE_NOT_FOUND = "Данная страница находится за " +
-            "пределами сайтов, указанных в конфигурационном файле";
+            "пределами сайтов, указанных в конфигурации";
     
     private final ApplicationContext applicationContext;
     private final WebConfig config;

@@ -63,13 +63,12 @@ public class Searcher {
         
         int thresholdCountPages = (int) (pageService.countBySiteId(siteId) * THRESHOLD);
         
-        List<Lemma> lemmaList = lemmaService.getLemmasByLemmasAndSiteId(lemmasStr, siteId);
-        
-        return lemmaList.size() < lemmasStr.size() ? new HashMap<>() :
-                lemmaList.stream()
+        List<Lemma> foundLemmas = lemmaService.getLemmasByLemmasAndSiteId(lemmasStr, siteId);
+    
+        return foundLemmas.size() < lemmasStr.size() ? new HashMap<>() : foundLemmas.stream()
                 .filter(lemma -> lemma.getFrequency() < thresholdCountPages)
                 .collect(Collectors.toMap(Lemma::getId, Function.identity()));
-        
+    
     }
     
     private List<Index> findIndexes(Map<Integer, Lemma> lemmaMap) {

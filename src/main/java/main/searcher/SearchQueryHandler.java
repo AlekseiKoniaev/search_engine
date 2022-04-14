@@ -39,13 +39,11 @@ public class SearchQueryHandler {
     }
     
     
-    public void search(SearchQuery query) {
+    public void search(SearchQuery newQuery) {
         
-        status = SearchStatus.READY;
-        
-        if (this.query == null || !this.query.equals(query)) {
+        if (query == null || !query.equals(newQuery)) {
             
-            this.query = query;
+            query = newQuery;
             
             uniqueLemmas = getUniqueLemmas();
             if (uniqueLemmas.isEmpty()) {
@@ -59,12 +57,12 @@ public class SearchQueryHandler {
                 status = SearchStatus.NOT_FOUND;
                 return;
             }
+    
+            status = SearchStatus.OK;
             
-        } else {
-            this.query = query;
+        } else if (status == SearchStatus.OK) {
+            query = newQuery;
         }
-        
-        status = SearchStatus.OK;
     }
     
     private Set<String> getUniqueLemmas() {
@@ -111,14 +109,14 @@ public class SearchQueryHandler {
         return foundPageObjectList;
     }
     
+    public int getCount() {
+        return foundPageObjectList.size();
+    }
+    
     public List<Finding> getFindings() {
         FindingsCreator creator = applicationContext.getBean(FindingsCreator.class);
         creator.init(query, foundPageObjectList);
         return creator.getFindings();
-    }
-    
-    public int getCount() {
-        return foundPageObjectList.size();
     }
     
 }

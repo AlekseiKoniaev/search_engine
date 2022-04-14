@@ -2,6 +2,7 @@ package main.walker;
 
 import lombok.Getter;
 import main.config.WebConfig;
+import main.exceptions.ServerNotFoundException;
 import main.indexer.PageIndexer;
 import main.model.Page;
 import main.model.Site;
@@ -141,8 +142,7 @@ public class SiteWalker extends RecursiveAction {
         } catch (SocketTimeoutException e) {
             page.setCode(0);
         } catch (IOException e) {
-            throw new ServerNotFoundException("Server not found with url = " +
-                    site.getUrl() + page.getPath());
+            throw new ServerNotFoundException(site.getUrl() + page.getPath());
         }
     
         pageService.savePage(page);
